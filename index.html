@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#00043f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>崇德機智星</title>
+<link rel="icon" href="assets/img/star.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><span class="star">✦</span><span class="t">崇德機智星</span><small>GENIUS STAR</small></div>
+
+  <!-- 進場後常駐的身分列 -->
+  <div class="idbar hidden" id="idbar">
+    <span class="pill live" id="id-name">—</span>
+    <span class="pill" id="id-score">0 分</span>
+    <button class="btn ghost mini" id="btn-rename">改名</button>
+  </div>
+
+  <!-- ===== 1. 輸入暱稱 ===== -->
+  <section id="scr-join" class="stack hidden">
+    <div class="card stack">
+      <div class="field" style="margin:0;">
+        <label for="in-name">你的暱稱（會顯示在大螢幕與排行榜上）</label>
+        <input id="in-name" maxlength="24" autocomplete="nickname" enterkeyhint="go" placeholder="例如：小明">
+      </div>
+      <button id="btn-join" class="btn wide" disabled>進場 →</button>
+      <p class="hint" style="margin:0;">
+        一個人一支手機。答對拿分，<b style="color:var(--gold-lt)">同分比速度</b> ——
+        答對的題目作答時間加起來越短，名次越前面。
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== 2. 等待中 ===== -->
+  <section id="scr-wait" class="stack hidden" style="flex:1 1 auto; justify-content:center; align-content:center;">
+    <div class="center stack">
+      <div class="spin"></div>
+      <h2 class="title-gold" style="font-size:26px; margin:6px 0;" id="wait-title">等待主持人出題</h2>
+      <p class="hint" id="wait-msg">請把手機拿好，題目馬上就來 ✦</p>
+      <div class="dbl-banner hidden" id="wait-double">🎡 轉盤抽中你了！<b>下一題分數 ×2</b></div>
+      <div class="card stack hidden" id="wait-rank" style="margin-top:8px;">
+        <p class="hint" style="margin:0;">目前排名</p>
+        <div class="rank-big" id="wait-rank-no">—</div>
+        <p class="hint" style="margin:0;" id="wait-rank-note"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. 作答 ===== -->
+  <section id="scr-question" class="stack hidden">
+    <div class="qhead">
+      <span class="qbadge">第 <b id="q-no">1</b> 題</span>
+      <span class="pts-badge" id="q-pts" style="display:none">+1</span>
+      <span class="x2-badge" id="q-x2" style="display:none">×2</span>
+      <span class="timer" id="q-timer">–</span>
+    </div>
+    <div class="center" style="margin-top:10px;"><span class="cat-pill" id="q-cat">—</span></div>
+
+    <div class="qpanel"><p id="q-text">…</p></div>
+
+    <div class="opts" id="opts"></div>
+
+    <div class="stack" id="confirm-box" style="margin-top:14px;">
+      <button class="btn wide" id="btn-confirm" disabled>確認送出 <b>—</b></button>
+    </div>
+
+    <div class="center" style="margin-top:16px;">
+      <span class="pill live"   id="tag-open">開放作答中</span>
+      <span class="pill lock hidden" id="tag-lock">已截止作答</span>
+    </div>
+    <p class="hint" id="q-hint" style="margin-top:10px;"></p>
+  </section>
+
+  <!-- ===== 4. 公布答案 ===== -->
+  <section id="scr-reveal" class="stack hidden">
+    <div class="center"><span class="qbadge">第 <b id="r-no">1</b> 題</span></div>
+    <div class="center" style="margin-top:10px;"><span class="cat-pill" id="r-cat">—</span></div>
+    <h2 class="title-gold center" style="font-size:26px; margin:14px 0 0;"><span class="emoji">🎉</span> 正確答案 <span class="emoji">🎉</span></h2>
+    <div class="reveal-letter" id="r-letter">A</div>
+    <div class="center" id="r-opt" style="font-weight:900; color:var(--gold-lt); font-size:17px; line-height:1.35;"></div>
+    <div class="center" style="margin-top:12px;"><span class="verdict" id="r-verdict">—</span></div>
+    <p class="hint" id="r-sub" style="margin:8px 0 0;"></p>
+
+    <div class="card stack" style="margin-top:18px;">
+      <div class="row" style="justify-content:space-between; align-items:baseline;">
+        <strong class="title-gold" style="font-size:16px;">全場作答</strong>
+        <span class="hint" id="r-total">—</span>
+      </div>
+      <div class="bars" id="r-bars"></div>
+    </div>
+    <div class="card stack center hidden" id="r-rank" style="margin-top:14px;">
+      <p class="hint" style="margin:0;">你目前排名</p>
+      <div class="rank-big" id="r-rank-no">—</div>
+      <p class="hint" style="margin:0;" id="r-rank-note"></p>
+    </div>
+    <p class="hint" style="margin-top:14px;">說明在大螢幕上，抬頭看一下 ✦</p>
+  </section>
+
+  <!-- ===== 5. 最終排行 ===== -->
+  <section id="scr-final" class="stack hidden">
+    <h2 class="title-gold center" style="font-size:30px; margin:10px 0 2px;">★ 最終排行榜 ★</h2>
+    <p class="hint" style="margin:0 0 14px;">只公布前三名　同分比答對題目的作答時間</p>
+    <div class="card">
+      <table class="rank">
+        <thead><tr><th style="width:44px;">#</th><th>暱稱</th><th class="n">總分</th><th class="n">答對</th></tr></thead>
+        <tbody id="final-rows"></tbody>
+      </table>
+    </div>
+    <div class="card stack center" id="final-me" style="margin-top:14px;">
+      <p class="hint" style="margin:0;">你的成績</p>
+      <div class="rank-big" id="final-me-no">—</div>
+      <p class="hint" style="margin:0;" id="final-me-note"></p>
+      <div id="final-cat-box" class="hidden">
+        <p class="hint" style="margin:6px 0 4px;">你最強的項目</p>
+        <span class="cat-pill" id="final-cat">—</span>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:18px;">感謝參與 —— 崇德機智星</p>
+  </section>
+
+  <!-- ===== 錯誤 ===== -->
+  <section id="scr-error" class="stack hidden">
+    <div class="card stack center">
+      <h2 class="title-gold" style="font-size:22px; margin:0;">連線發生問題</h2>
+      <p class="hint" id="err-msg">請確認網路後重新整理頁面。</p>
+      <button class="btn" onclick="location.reload()">重新載入</button>
+    </div>
+  </section>
+
+</div>
+
+<script type="module" src="assets/js/player.js"></script>
+</body>
+</html>

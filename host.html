@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#00043f">
+<meta name="robots" content="noindex">
+<title>主持人控制台｜崇德機智星</title>
+<link rel="icon" href="assets/img/star.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+  .inline-field { display:flex; align-items:center; gap:8px; }
+  .inline-field label { margin:0; white-space:nowrap; }
+  .inline-field input { width:88px; }
+  .plist { max-height: 340px; overflow-y: auto; }
+  .pline { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid rgba(53,168,255,.18); }
+  .pline .nm { flex:1 1 auto; min-width:0; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pline .sc { flex:0 0 auto; color:var(--gold-lt); font-weight:800; font-variant-numeric:tabular-nums; }
+  .fastlist { display:grid; gap:4px; margin:0; padding-left:1.4em; }
+  .fastlist li { font-weight:700; }
+  .fastlist li small { color:var(--gold-lt); margin-left:6px; }
+</style>
+</head>
+<body>
+<div class="wrap wide">
+
+  <div class="brand"><span class="star">✦</span><span class="t">崇德機智星</span><small>主持人控制台</small></div>
+
+  <!-- ===== 登入 ===== -->
+  <section id="scr-login" class="stack hidden">
+    <div class="card stack center">
+      <strong class="title-gold" style="font-size:20px;">主持人登入</strong>
+      <button id="btn-login" class="btn wide">
+        <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.7-.4-3.9H24v7.1h12.1c-.2 1.8-1.6 4.6-4.5 6.4l6.9 5.3c4.1-3.8 6.6-9.4 6.6-14.9z"/>
+          <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.3c-1.9 1.3-4.4 2.2-7.6 2.2-5.8 0-10.7-3.8-12.5-9.1l-7.1 5.5C8 41.1 15.4 46 24 46z"/>
+          <path fill="#FBBC05" d="M11.5 28.5c-.5-1.4-.7-2.9-.7-4.5s.3-3.1.7-4.5l-7.1-5.5C2.9 17 2 20.4 2 24s.9 7 2.4 10l7.1-5.5z"/>
+          <path fill="#EA4335" d="M24 10.2c4.1 0 6.9 1.8 8.5 3.3l6.1-6C34.9 4 29.9 2 24 2 15.4 2 8 6.9 4.4 14l7.1 5.5c1.8-5.3 6.7-9.3 12.5-9.3z"/>
+        </svg>
+        使用 Google 帳號登入
+      </button>
+      <p class="hint" id="login-msg">請用已加入主持人名單的 Google 帳號登入（跟大學星攻略同一份名單）。</p>
+    </div>
+  </section>
+
+  <!-- ===== 控制台 ===== -->
+  <section id="scr-console" class="stack hidden">
+
+    <!-- 主控 -->
+    <div class="card stack">
+      <div class="row" style="align-items:center; justify-content:space-between;">
+        <span class="pill" id="tag-phase">待機中</span>
+        <span class="timer" id="tag-timer" style="font-size:22px; min-width:52px; padding:2px 10px;">–</span>
+        <span class="hint" id="tag-who" style="text-align:right;"></span>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="sel-list">題庫</label>
+          <select id="sel-list">
+            <option value="main">正式題目</option>
+            <option value="demo">DEMO 練習題（不計分）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sel-q">目前題目</label>
+          <select id="sel-q"><option>載入中…</option></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btn-open"   class="btn"       style="flex:1 1 150px;">▶ 出題／開始倒數</button>
+        <button id="btn-lock"   class="btn ghost" style="flex:1 1 130px;">■ 提前截止</button>
+        <button id="btn-reveal" class="btn"       style="flex:1 1 140px;">🎉 公布答案</button>
+      </div>
+      <div class="row">
+        <button id="btn-prev"  class="btn ghost" style="flex:1 1 110px;">← 上一題</button>
+        <button id="btn-next"  class="btn ghost" style="flex:1 1 110px;">下一題 →</button>
+        <button id="btn-idle"  class="btn ghost" style="flex:1 1 110px;">回到待機</button>
+        <button id="btn-final" class="btn"       style="flex:1 1 170px;">🏆 結束並公布排行榜</button>
+      </div>
+      <p class="hint" style="text-align:left; margin:0;">
+        倒數歸零會自動截止作答（不會自動公布答案）。「下一題」會直接出題並重新開始倒數。
+        <b>這一頁整場都要開著</b>，自動截止是由它負責的。
+      </p>
+    </div>
+
+    <!-- 投影幕翻頁 -->
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <strong class="title-gold" style="font-size:19px;"><span class="emoji">🖥</span> 投影幕翻頁</strong>
+        <span class="pill" id="page-tag">—</span>
+      </div>
+      <p class="hint" style="text-align:left; margin:0;">
+        跟在投影機那台按 <b>→</b> / <b>←</b> 完全一樣 ——
+        開場、公布答案的說明頁、排行榜依序揭曉名次，都可以在這裡翻。
+      </p>
+      <div class="row">
+        <button id="btn-page-prev" class="btn ghost" style="flex:1 1 150px;">◀ 上一頁</button>
+        <button id="btn-page-next" class="btn"       style="flex:1 1 150px;">下一頁 ▶</button>
+      </div>
+      <p class="hint" style="text-align:left; margin:0;" id="page-hint"></p>
+    </div>
+
+    <!-- 加倍轉盤 -->
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <strong class="title-gold" style="font-size:19px;"><span class="emoji">🎡</span> 分數加倍轉盤</strong>
+        <span class="pill" id="dbl-tag">尚未抽</span>
+      </div>
+      <p class="hint" style="text-align:left; margin:0;">
+        按下去，投影幕會跳出轉盤抽出<b>一位玩家</b>，他的<b>下一題</b>答對分數 ×2。
+        抽過的人不會再被抽到（全部抽完才重新一輪）。人多的時候轉盤上只畫 20 格，中獎的人一定在裡面。
+      </p>
+      <div class="row">
+        <button id="btn-wheel" class="btn" style="flex:1 1 180px;">🎡 轉一次</button>
+        <button id="btn-wheel-clear" class="btn ghost" style="flex:1 1 140px;">取消加倍</button>
+      </div>
+    </div>
+
+    <!-- 投影幕播放 -->
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <strong class="title-gold" style="font-size:19px;"><span class="emoji">🔊</span> 投影幕播放</strong>
+        <span class="pill" id="cue-tag">沒有在播</span>
+      </div>
+      <p class="hint" style="text-align:left; margin:0;">
+        按下去，投影幕就會放那個音檔（現場的背景音樂會先收掉，放完自動接回來）。
+        放到一半想停就再按一次同一顆。投影頁要先按過「開啟音效」才出得了聲。
+      </p>
+      <div class="row">
+        <button id="btn-cue-bell"     class="btn ghost" style="flex:1 1 180px;">🔔 上／下課鐘聲</button>
+        <button id="btn-cue-exercise" class="btn ghost" style="flex:1 1 180px;">🤸 健康操</button>
+      </div>
+    </div>
+
+    <!-- 投影設定 -->
+    <div class="card stack">
+      <strong class="title-gold" style="font-size:19px;">投影設定</strong>
+      <div class="row" style="align-items:center;">
+        <div class="inline-field">
+          <label for="in-limit">倒數秒數</label>
+          <input id="in-limit" type="number" min="5" max="600" step="5" value="20">
+        </div>
+      </div>
+      <label class="row" style="align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="in-shownames" style="width:auto;">
+        <span>作答中在投影幕顯示「已送出」的玩家暱稱</span>
+      </label>
+      <p class="hint" style="text-align:left; margin:0;">
+        只顯示誰送出了，不會顯示選了什麼。取消勾選就只顯示人數。
+      </p>
+    </div>
+
+    <!-- 即時狀況 -->
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:baseline;">
+        <strong class="title-gold" style="font-size:19px;">本題即時狀況</strong>
+        <span class="hint" id="live-count">—</span>
+      </div>
+      <p style="margin:0;"><span class="cat-pill" id="live-cat">—</span></p>
+      <p id="live-q" class="hint" style="text-align:left; margin:0;">—</p>
+
+      <div class="grid2">
+        <div>
+          <p class="hint" style="text-align:left; margin:0 0 6px;"><b>全場作答分布</b></p>
+          <div class="bars" id="live-bars"></div>
+        </div>
+        <div>
+          <p class="hint" style="text-align:left; margin:0 0 6px;"><b>答對最快的人</b>（只有你看得到）</p>
+          <ol class="fastlist" id="live-fast"></ol>
+        </div>
+      </div>
+      <p class="hint" style="text-align:left; margin:6px 0 0;">
+        正解：<b id="live-key" style="color:var(--gold)">—</b>
+        （只有你看得到，要按「公布答案」玩家端才讀得到）
+      </p>
+    </div>
+
+    <!-- 排行榜 -->
+    <div class="card">
+      <div class="row" style="justify-content:space-between; align-items:baseline;">
+        <strong class="title-gold" style="font-size:19px;">即時排行榜（只計正式題目）</strong>
+        <span class="hint" id="rank-note"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="rank" style="margin-top:10px;">
+          <thead><tr>
+            <th style="width:44px;">#</th><th>暱稱</th>
+            <th class="n">總分</th><th class="n">答對</th><th class="n">答對用時</th><th class="n">本題</th>
+          </tr></thead>
+          <tbody id="rank-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 類別分析 -->
+    <div class="card stack">
+      <strong class="title-gold" style="font-size:19px;">各類別最強玩家</strong>
+      <p class="hint" style="text-align:left; margin:0;">比該類別的得分率，平手比得分、再比作答時間。</p>
+      <div class="stack" id="mx-champs" style="gap:6px;"></div>
+    </div>
+
+    <!-- 玩家名單 -->
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <strong class="title-gold" style="font-size:19px;">玩家名單</strong>
+        <span class="pill live" id="p-count">0 人</span>
+      </div>
+      <p class="hint" style="text-align:left; margin:0;">
+        暱稱不恰當可以按「移出」—— 對方手機會回到輸入暱稱的畫面，成績也會從排行榜拿掉。
+      </p>
+      <input id="p-filter" placeholder="搜尋暱稱…">
+      <div id="p-list" class="plist"></div>
+    </div>
+
+    <!-- 其他 -->
+    <div class="card stack">
+      <strong class="title-gold" style="font-size:19px;">其他</strong>
+      <div class="row">
+        <a class="btn ghost" href="screen.html" target="_blank" rel="noopener">🖥 開啟投影頁</a>
+        <a class="btn ghost" href="admin.html" target="_blank" rel="noopener">✎ 題目後台</a>
+        <button id="btn-qr" class="btn ghost">📱 顯示玩家端 QR Code</button>
+      </div>
+      <div class="row">
+        <button id="btn-clear-q"  class="btn ghost">⟲ 清除本題作答</button>
+        <button id="btn-reset"    class="btn danger">⟲ 清除所有作答紀錄</button>
+        <button id="btn-clear-p"  class="btn danger">✕ 清空玩家名單</button>
+        <button id="btn-logout"   class="btn ghost">登出</button>
+      </div>
+      <p class="hint" style="text-align:left; margin:0;">
+        「清除本題作答」讓這一題可以重來。「清除所有作答紀錄」清空答案、統計與排行榜，玩家名單保留。
+        「清空玩家名單」會讓所有人回到輸入暱稱的畫面 —— DEMO 測完、正式開始前兩顆都按一次。
+      </p>
+    </div>
+
+  </section>
+
+  <!-- QR 對話框 -->
+  <div id="qr-box" class="card stack center hidden" style="position:fixed; inset:auto 16px 16px 16px; max-width:420px; margin:0 auto; z-index:50;">
+    <strong class="title-gold" style="font-size:20px;">掃描進場</strong>
+    <img id="qr-img" alt="玩家端 QR Code" style="width:220px; height:220px; margin:0 auto; background:#fff; border-radius:10px; padding:8px;">
+    <p class="hint" id="qr-url" style="word-break:break-all;"></p>
+    <button id="btn-qr-close" class="btn ghost">關閉</button>
+  </div>
+
+</div>
+
+<script type="module" src="assets/js/host.js"></script>
+</body>
+</html>

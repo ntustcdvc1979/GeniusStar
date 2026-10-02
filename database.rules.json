@@ -1,0 +1,178 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "config": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "questions": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "answerKey": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$qid": {
+        ".read": "root.child('state/revealed').child($qid).val() === true",
+        ".validate": "newData.isString() && newData.val().matches(/^[ABCD]$/)"
+      }
+    },
+    "state": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "stats": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "leaderboard": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "reps": {
+      ".read": true,
+      "$gid": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || !data.exists() || data.child('uid').val() === auth.uid)",
+        ".validate": "root.child('admins').child(auth.uid).val() === true || (newData.hasChildren(['uid']) && newData.child('uid').val() === auth.uid && root.child('config/groups').child($gid).exists())",
+        "uid": {
+          ".validate": "newData.isString()"
+        },
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "repAnswers": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$qid": {
+        "$gid": {
+          ".write": "auth != null && !data.exists() && root.child('reps').child($gid).child('uid').val() === auth.uid && root.child('state/phase').val() === 'open' && root.child('state/qid').val() === $qid",
+          ".validate": "root.child('admins').child(auth.uid).val() === true || (newData.hasChildren(['c','uid']) && newData.child('uid').val() === auth.uid)",
+          "c": {
+            ".validate": "newData.isString() && newData.val().matches(/^[ABCD]$/)"
+          },
+          "uid": {
+            ".validate": "newData.isString()"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "responses": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$qid": {
+        "$gid": {
+          ".read": "auth != null && root.child('reps').child($gid).child('uid').val() === auth.uid",
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('state/phase').val() === 'open' && root.child('state/qid').val() === $qid",
+            ".validate": "newData.hasChildren(['c'])",
+            "c": {
+              ".validate": "newData.isString() && newData.val().matches(/^[ABCD]$/)"
+            },
+            "t": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
+    "doubles": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "gs": {
+      "config": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      },
+      "questions": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      },
+      "answerKey": {
+        ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+        "$qid": {
+          ".read": "root.child('gs/state/revealed').child($qid).val() === true",
+          ".validate": "newData.isString() && newData.val().matches(/^[ABCD]$/)"
+        }
+      },
+      "state": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      },
+      "opened": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      },
+      "stats": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      },
+      "leaderboard": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      },
+      "doubles": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      },
+      "players": {
+        ".read": true,
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['name'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
+      "answers": {
+        ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+        "$qid": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('gs/players').child($uid).exists() && root.child('gs/state/phase').val() === 'open' && root.child('gs/state/qid').val() === $qid",
+            ".validate": "newData.hasChildren(['c','t'])",
+            "c": {
+              ".validate": "newData.isString() && newData.val().matches(/^[ABCD]$/)"
+            },
+            "t": {
+              ".validate": "newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

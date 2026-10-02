@@ -1,0 +1,77 @@
+name: 部署到 GitHub Pages
+
+# 部署時才把 Firebase 設定寫進 firebase-config.js，
+# 所以設定值不會出現在 git 紀錄裡。
+# 需要先到 Settings → Secrets and variables → Actions 建立
+# 名為 FIREBASE_CONFIG 的 secret，內容是一段 JSON，例如：
+#   {"apiKey":"AIza...","authDomain":"xxx.firebaseapp.com",
+#    "databaseURL":"https://xxx-default-rtdb.asia-southeast1.firebasedatabase.app",
+#    "projectId":"xxx","storageBucket":"xxx.appspot.com",
+#    "messagingSenderId":"123456789","appId":"1:123:web:abc"}
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 組出網站內容並注入 Firebase 設定
+        env:
+          FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FIREBASE_CONFIG:-}" ]; then
+            echo "::error::找不到 FIREBASE_CONFIG secret。請到 Settings → Secrets and variables → Actions 建立。"
+            exit 1
+          fi
+          if ! printf '%s' "$FIREBASE_CONFIG" | python3 -c 'import json,sys; json.load(sys.stdin)' >/dev/null; then
+            echo "::error::FIREBASE_CONFIG 不是合法的 JSON。格式要像 {\"apiKey\":\"...\"}，鍵名記得加雙引號。"
+            exit 1
+          fi
+          if ! printf '%s' "$FIREBASE_CONFIG" | grep -q '"databaseURL"'; then
+            echo "::error::FIREBASE_CONFIG 少了 databaseURL。到 Firebase 主控台「建構 → Realtime Database」頁面上方複製資料庫網址補上。"
+            exit 1
+          fi
+
+          # 只把要公開的檔案複製到 _site，避開 .git / .github
+          mkdir -p _site
+          rsync -a --exclude '.git' --exclude '.github' --exclude '_site' ./ _site/
+          printf 'export const firebaseConfig = %s;\n' "$FIREBASE_CONFIG" > _site/assets/js/firebase-config.js
+          rm -f _site/assets/js/firebase-config.example.js
+          echo "已產生 _site/assets/js/firebase-config.js"
+
+          # 每次部署都給 js 檔加上版本號。GitHub Pages 的 Cache-Control 是 600 秒，
+          # 沒有版本號的話瀏覽器可能拿到「舊的 common.js + 新的 admin.js」，
+          # import 對不上就整頁掛掉（畫面全白、載不進後台）。
+          V="${GITHUB_SHA::8}"
+          find _site -name '*.html' -print0 | xargs -0 -r sed -i -E "s#(src=\"(\./)?assets/js/[A-Za-z0-9_-]+\.js)\"#\1?v=${V}\"#g; s#(from \"\./assets/js/[A-Za-z0-9_-]+\.js)\"#\1?v=${V}\"#g"
+          find _site/assets/js -name '*.js' -print0 | xargs -0 -r sed -i -E "s#(from \"\./[A-Za-z0-9_-]+\.js)\"#\1?v=${V}\"#g"
+          echo "已為 js 加上版本號 ?v=${V}"
+          grep -h -o 'assets/js/[A-Za-z0-9_-]*.js?v=[a-f0-9]*' _site/*.html | sort -u || true
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

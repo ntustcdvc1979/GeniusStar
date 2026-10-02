@@ -1,0 +1,13 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="robots" content="noindex">
+<title>自我檢查｜崇德機智星</title>
+<style>body{font-family:ui-monospace,monospace;background:#00043f;color:#dbe6ff;padding:18px;font-size:13px}
+b{color:#ffd24a}.f{color:#ff8497}</style></head>
+<body><pre id="out">running…</pre>
+<script type="module">
+import { run } from "./assets/js/selftest.js";
+const { log, fails } = run();
+document.getElementById("out").innerHTML =
+  log.map(l => `${l.pass ? "PASS" : "<b class='f'>FAIL</b>"}  ${l.text.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}`).join("\n") +
+  `\n\n<b>${log.length - fails} / ${log.length} 通過</b>${fails ? "　<b class='f'>有 FAIL，請檢查</b>" : ""}`;
+</script>
+</body></html>

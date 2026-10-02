@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#00043f">
+<meta name="robots" content="noindex">
+<title>題目後台｜崇德機智星</title>
+<link rel="icon" href="assets/img/star.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .qitem { border:2px solid rgba(53,168,255,.35); border-radius:12px; padding:14px; background:rgba(4,12,64,.6); }
+  .qitem.editing { border-color: var(--gold); }
+  .qitem .head { display:flex; gap:10px; align-items:center; justify-content:space-between; min-width:0; }
+  .qitem .no { flex:0 0 auto; font-weight:900; color:var(--gold); font-size:15px; }
+  /* min-width:0 不能少：flex 項目預設不會縮到比內容還窄，
+     沒有它的話 nowrap 的長題幹會把整張卡片撐爆、整頁跑出橫向捲軸 */
+  .qitem .txt { flex:1 1 auto; min-width:0; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qitem .ans { flex:0 0 auto; font-weight:900; color:#7bffab; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:520px){ .grid2 { grid-template-columns:1fr; } }
+  .qitem .meta { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .qitem .flag { font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px;
+                 background:rgba(53,168,255,.16); border:1px solid rgba(53,168,255,.45); color:var(--cyan-lt); }
+  .qitem .flag.warn { background:rgba(255,84,112,.14); border-color:var(--bad); color:#ffa5b4; }
+  .qitem .flag.ok   { background:rgba(47,217,107,.14); border-color:var(--ok); color:#7bffab; }
+
+  /* 說明區塊編輯器 */
+  .blk { border:2px solid rgba(53,168,255,.35); border-radius:10px; padding:10px;
+         background:rgba(4,12,64,.55); }
+  .blk .blkhead { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .blk .blkhead .kind { font-weight:900; color:var(--gold); font-size:14px; min-width:52px; }
+  .blk select, .blk input, .blk textarea { padding:8px 10px; font-size:14px; }
+  .blk select { width:auto; }
+  .blk textarea { min-height:72px; }
+
+  /* 投影幕排版預覽：16:9 縮圖 */
+  .ex-preview {
+    position:relative; width:100%; aspect-ratio:16/9;
+    border:2px solid rgba(53,168,255,.4); border-radius:12px; overflow:hidden;
+    background:linear-gradient(180deg,#00043f,#050e5e);
+    padding:14px;
+  }
+  .ex-preview .exblocks { --blk-scale:1; height:100%; overflow:hidden;
+    display:flex; flex-wrap:wrap; align-content:flex-start; gap:10px 2%; }
+  .ex-preview .exblock { margin:0; min-width:0; }
+  .ex-preview .exblock.full { flex:0 0 100%; }
+  .ex-preview .exblock.half { flex:0 0 49%; }
+  .ex-preview .exblock.center { text-align:center; }
+  .ex-preview .exblock.left { text-align:left; }
+  .ex-preview .exblock.right { text-align:right; }
+  .ex-preview .exblock.auto { flex:0 1 auto; }
+  .ex-preview .exrow { flex:0 0 100%; min-width:0; display:flex; gap:6px; align-items:center; }
+  .ex-preview .exrow.left { justify-content:flex-start; }
+  .ex-preview .exrow.center { justify-content:center; }
+  .ex-preview .exrow.right { justify-content:flex-end; }
+  .ex-preview .exrow .exblock { flex:0 1 auto; min-width:0; }
+  .ex-preview .exrow img { display:block; }
+  .ex-preview .vidbox { height:var(--ih, 60px); aspect-ratio:16/9; max-width:100%; border-radius:4px; overflow:hidden;
+    background:#000; box-shadow:0 0 0 2px rgba(255,200,31,.3); }
+  .ex-preview .exblock.center .vidbox { margin:0 auto; }
+  .ex-preview .exblock.right .vidbox { margin-left:auto; }
+  .ex-preview .vidbox iframe, .ex-preview .vidbox video { width:100%; height:100%; border:0; display:block; }
+  .ex-preview .exblocks.solo { flex-wrap:nowrap; align-content:stretch; }
+  .ex-preview .exblocks.solo .exblock { flex:1 1 auto; min-width:0; min-height:0; align-self:stretch; }
+  .ex-preview .exblocks.solo .exblock img { width:100%; height:100%; max-width:none; max-height:none; object-fit:contain; }
+  .ex-preview .exblocks.solo .vidbox { width:100%; height:100%; aspect-ratio:auto; max-width:none; }
+  .ex-preview .exblock.text { color:#e6eeff; line-height:1.5; white-space:pre-wrap; }
+  .ex-preview .exblock.head { color:var(--gold-lt); font-weight:900; line-height:1.3; }
+  .ex-preview .exblock img { max-width:100%; max-height:var(--ih, 60px); object-fit:contain;
+    border-radius:6px; box-shadow:0 0 0 2px rgba(255,200,31,.3); }
+  .ex-preview .exblock img { display:inline-block; vertical-align:middle; }
+  .ex-preview .empty { color:var(--txt-dim); font-size:13px; text-align:center; padding-top:20%; }
+</style>
+</head>
+<body>
+<div class="wrap wide">
+
+  <div class="brand"><span class="star">✦</span><span class="t">崇德機智星</span><small>題目後台</small></div>
+
+  <!-- 登入 -->
+  <section id="scr-login" class="stack hidden">
+    <div class="card stack center">
+      <strong class="title-gold" style="font-size:20px;">主持人登入</strong>
+      <button id="btn-login" class="btn wide">
+        <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.7-.4-3.9H24v7.1h12.1c-.2 1.8-1.6 4.6-4.5 6.4l6.9 5.3c4.1-3.8 6.6-9.4 6.6-14.9z"/>
+          <path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.3c-1.9 1.3-4.4 2.2-7.6 2.2-5.8 0-10.7-3.8-12.5-9.1l-7.1 5.5C8 41.1 15.4 46 24 46z"/>
+          <path fill="#FBBC05" d="M11.5 28.5c-.5-1.4-.7-2.9-.7-4.5s.3-3.1.7-4.5l-7.1-5.5C2.9 17 2 20.4 2 24s.9 7 2.4 10l7.1-5.5z"/>
+          <path fill="#EA4335" d="M24 10.2c4.1 0 6.9 1.8 8.5 3.3l6.1-6C34.9 4 29.9 2 24 2 15.4 2 8 6.9 4.4 14l7.1 5.5c1.8-5.3 6.7-9.3 12.5-9.3z"/>
+        </svg>
+        使用 Google 帳號登入
+      </button>
+      <p class="hint" id="login-msg">請用已加入主持人名單的 Google 帳號登入（跟大學星攻略同一份名單）。</p>
+    </div>
+  </section>
+
+  <section id="scr-main" class="stack hidden">
+
+    <!-- 開場設定 -->
+    <div class="card stack">
+      <strong class="title-gold" style="font-size:20px;">開場畫面</strong>
+      <p class="hint" style="text-align:left; margin:0;">
+        投影幕在待機時用 <b>→</b> / <b>←</b> 翻（主持人控制台也翻得動）：<br>
+        黑畫面 →（開場影片）→ 主視覺 → 遊戲規則 → 掃碼加入（即時顯示已加入的暱稱）。<br>
+        下面三格都是選填，<b>留空就用內建的畫面</b>，不會開天窗。
+      </p>
+      <div class="field">
+        <label for="in-heroimg">主視覺圖片（選填，滿版 16:9）</label>
+        <input id="in-heroimg" placeholder="assets/img/hero.webp 或 https://…">
+      </div>
+      <div id="heroimg-preview" class="center hidden" style="margin:4px 0;">
+        <img id="heroimg-preview-img" alt="主視覺預覽" style="max-width:100%; max-height:200px; border-radius:10px; box-shadow:0 0 0 2px rgba(255,200,31,.35);">
+      </div>
+      <div class="field">
+        <label for="in-video">開場影片（選填，填了才會多一頁）</label>
+        <input id="in-video" placeholder="assets/video/opening.mp4 或 YouTube 網址">
+      </div>
+      <div class="field">
+        <label for="in-rulesimg">規則頁的圖片（選填，取代內建的手機示意圖）</label>
+        <input id="in-rulesimg" placeholder="assets/img/explain/rules.webp 或 https://…">
+      </div>
+      <div id="rulesimg-preview" class="center hidden" style="margin:4px 0;">
+        <img id="rulesimg-preview-img" alt="規則圖預覽" style="max-width:100%; max-height:200px; border-radius:10px; box-shadow:0 0 0 2px rgba(255,200,31,.35);">
+      </div>
+      <button id="btn-intro" class="btn mini">儲存開場畫面</button>
+    </div>
+
+    <!-- 題目 -->
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <strong class="title-gold" style="font-size:20px;">題目</strong>
+        <span class="hint" id="q-count"></span>
+      </div>
+      <div class="field">
+        <label for="sel-list">正在編輯哪個題庫</label>
+        <select id="sel-list">
+          <option value="main">正式題目</option>
+          <option value="demo">DEMO 練習題（不計分）</option>
+        </select>
+      </div>
+      <div id="q-list" class="stack"></div>
+      <button id="q-add" class="btn">＋ 新增一題</button>
+    </div>
+
+    <!-- 編輯器 -->
+    <div id="editor" class="card stack hidden">
+      <strong class="title-gold" style="font-size:20px;" id="ed-title">編輯題目</strong>
+      <div class="field"><label for="ed-cat">類別</label><select id="ed-cat"></select></div>
+      <div class="field"><label for="ed-text">題幹</label><textarea id="ed-text" placeholder="請輸入題目內容"></textarea></div>
+      <div class="grid2">
+        <div class="field"><label for="ed-a">選項 A</label><input id="ed-a"></div>
+        <div class="field"><label for="ed-b">選項 B</label><input id="ed-b"></div>
+        <div class="field"><label for="ed-c">選項 C</label><input id="ed-c"></div>
+        <div class="field"><label for="ed-d">選項 D</label><input id="ed-d"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="ed-key">正確答案</label>
+          <select id="ed-key"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
+        </div>
+        <div class="field"><label for="ed-list">題庫</label>
+          <select id="ed-list">
+            <option value="main">正式題目</option>
+            <option value="demo">DEMO 練習題（不計分）</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="ed-pts">配分</label>
+        <input id="ed-pts" type="number" min="1" max="99" step="1" value="1">
+      </div>
+      <p class="hint" style="text-align:left; margin:0;">
+        預設 1 分：答對 +1。改成 N 就是答對 +N。
+        <b>只有不是 1 的時候</b>，投影幕與手機才會在題號旁顯示 <code>+N</code>。
+      </p>
+
+      <hr style="border:none; border-top:1px solid rgba(53,168,255,.3); margin:4px 0;">
+      <p class="hint" style="text-align:left; margin:0;">
+        <b style="color:var(--gold-lt)">公布答案後的說明</b>　會跟正解<b>同時</b>出現在投影幕上。
+        下面一格一格排，<b>半行</b>的區塊會自動並排成兩欄。
+      </p>
+
+      <div id="ed-blocks" class="stack" style="gap:10px;"></div>
+
+      <div class="row">
+        <button id="blk-add-head" class="btn ghost mini">＋ 小標題</button>
+        <button id="blk-add-text" class="btn ghost mini">＋ 文字</button>
+        <button id="blk-add-img"  class="btn ghost mini">＋ 圖片</button>
+        <button id="blk-add-video" class="btn ghost mini">＋ 影片</button>
+      </div>
+
+      <p class="hint" style="text-align:left; margin:0;">下面是投影幕上的實際排版預覽：</p>
+      <div class="ex-preview" id="ed-blkpreview"></div>
+
+      <div class="field">
+        <label for="ed-eximgfull">整頁大圖／影片（自己獨立一頁，選填）</label>
+        <input id="ed-eximgfull" placeholder="圖片或影片：assets/img/explain/q1-full.webp、assets/video/x.mp4、YouTube 網址">
+      </div>
+      <div id="ed-preview-full" class="center hidden" style="margin:4px 0;">
+        <img id="ed-preview-full-img" alt="整頁大圖預覽" style="max-width:100%; max-height:200px; border-radius:10px; box-shadow:0 0 0 2px rgba(53,168,255,.45);">
+        <div id="ed-preview-full-vid" class="hidden" style="max-width:360px; margin:0 auto; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:#000; box-shadow:0 0 0 2px rgba(53,168,255,.45);"></div>
+      </div>
+      <div class="field">
+        <label for="ed-exaudio">說明音檔（跟整頁大圖同一頁一起播，選填）</label>
+        <input id="ed-exaudio" placeholder="assets/audio/youtuber.mp3">
+      </div>
+      <div id="ed-preview-aud" class="hidden" style="margin:4px 0;">
+        <audio id="ed-preview-aud-el" controls preload="none" style="width:100%;"></audio>
+      </div>
+
+      <p class="hint" style="text-align:left; margin:0;">
+        兩個圖片欄位都是選填，可以只填一個、也可以都填。
+        <b>說明圖片</b>會跟說明文字併排在同一頁；<b>整頁大圖</b>會單獨佔滿一整個投影畫面，
+        適合放流程圖、對照表這種需要看細節的東西。<br>
+        圖片有兩種放法：①貼一個外部圖片直連網址；
+        ②把檔案放進 repo 的 <code>assets/img/explain/</code>，這裡填
+        <code>assets/img/explain/檔名.webp</code>。
+      </p>
+      <p class="hint" style="text-align:left; margin:0;">
+        <b style="color:var(--gold-lt)">說明音檔</b>跟整頁大圖是<b>同一頁</b>：大圖鋪滿畫面、音檔在底下播，
+        適合放旁白或一段訪談。<b>只播一次，不會重播</b>，翻到別頁就停；
+        播的時候講解背景音樂會自動讓開，畫面下方會有「🔊 說明音檔播放中」。<br>
+        沒填整頁大圖、只填音檔也可以 —— 那一頁就純粹放音檔。
+        整頁大圖填的是<b>影片</b>時，影片自己有聲音，說明音檔就會略過不播。<br>
+        檔案放進 repo 的 <code>assets/audio/</code>，這裡填
+        <code>assets/audio/檔名.mp3</code>（也可以貼外部音檔直連網址）。
+      </p>
+
+      <div class="row">
+        <button id="ed-save"   class="btn" style="flex:1 1 140px;">儲存</button>
+        <button id="ed-cancel" class="btn ghost" style="flex:1 1 100px;">取消</button>
+        <button id="ed-del"    class="btn danger" style="flex:1 1 100px;">刪除此題</button>
+      </div>
+    </div>
+
+    <!-- 批次匯入 -->
+    <div class="card stack">
+      <strong class="title-gold" style="font-size:20px;">批次貼上題目</strong>
+      <p class="hint" style="text-align:left; margin:0;">
+        一題一行，用直線 <code>|</code> 分隔：<br>
+        <code>題幹 | A選項 | B選項 | C選項 | D選項 | 正解字母 | 類別</code><br>
+        最後的類別可以省略（省略就是「未分類」）。可用的類別名稱：<br>
+        <span id="bulk-cats"></span><br>
+        例如：<code>台灣最高的建築物是？|台北101|高雄85大樓|台中國家歌劇院|台南赤崁樓|A</code>
+      </p>
+      <textarea id="bulk-in" style="min-height:130px;" placeholder="每行一題…"></textarea>
+      <p class="hint" style="text-align:left; margin:0;">
+        會匯入到上面「正在編輯哪個題庫」選的那一個。說明文字與圖片要匯入後逐題編輯。
+      </p>
+      <div class="row">
+        <button id="bulk-append"  class="btn ghost">附加到目前題庫</button>
+        <button id="bulk-replace" class="btn danger">清空並取代目前題庫</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <a class="btn ghost" href="host.html">← 回主持人控制台</a>
+      <button id="btn-logout" class="btn ghost">登出</button>
+    </div>
+
+  </section>
+</div>
+
+<script type="module" src="assets/js/admin.js"></script>
+</body>
+</html>
