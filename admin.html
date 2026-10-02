@@ -147,7 +147,6 @@
     <!-- 編輯器 -->
     <div id="editor" class="card stack hidden">
       <strong class="title-gold" style="font-size:20px;" id="ed-title">編輯題目</strong>
-      <div class="field"><label for="ed-cat">類別</label><select id="ed-cat"></select></div>
       <div class="field"><label for="ed-text">題幹</label><textarea id="ed-text" placeholder="請輸入題目內容"></textarea></div>
       <div class="grid2">
         <div class="field"><label for="ed-a">選項 A</label><input id="ed-a"></div>
@@ -157,7 +156,7 @@
       </div>
       <div class="grid2">
         <div class="field"><label for="ed-key">正確答案</label>
-          <select id="ed-key"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
+          <select id="ed-key"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="ALL">都正確（選哪個都算對）</option></select>
         </div>
         <div class="field"><label for="ed-list">題庫</label>
           <select id="ed-list">
@@ -239,9 +238,9 @@
       <strong class="title-gold" style="font-size:20px;">批次貼上題目</strong>
       <p class="hint" style="text-align:left; margin:0;">
         一題一行，用直線 <code>|</code> 分隔：<br>
-        <code>題幹 | A選項 | B選項 | C選項 | D選項 | 正解字母 | 類別</code><br>
-        最後的類別可以省略（省略就是「未分類」）。可用的類別名稱：<br>
-        <span id="bulk-cats"></span><br>
+        <code>題幹 | A選項 | B選項 | C選項 | D選項 | 正解</code><br>
+        正解填 <code>A</code>～<code>D</code>，或 <code>都正確</code>（那一題只要有送出，選哪個都算對）。
+        只有兩個選項就少寫兩欄：<code>題幹|甲|乙|B</code><br>
         例如：<code>台灣最高的建築物是？|台北101|高雄85大樓|台中國家歌劇院|台南赤崁樓|A</code>
       </p>
       <textarea id="bulk-in" style="min-height:130px;" placeholder="每行一題…"></textarea>

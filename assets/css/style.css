@@ -620,3 +620,6 @@ body.rep-theme {
 }
 
 .mini { padding: 8px 12px; font-size: 14px; }
+
+/* 正解是「都正確」：三個字，字級要比單一字母小，手機上才放得下 */
+.reveal-letter.all { font-size: clamp(56px, 19vw, 110px); padding: 10px 0; }

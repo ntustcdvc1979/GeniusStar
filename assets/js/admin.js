@@ -5,21 +5,14 @@
 import {
   db, auth, ref, onValue, set, update, remove,
   signInWithGoogle, consumeRedirectResult, authErrorText, signOut, onAuthStateChanged,
-  PATH, LETTERS, CATEGORIES, UNCATEGORIZED, LISTS, LIST_LABEL,
-  categoryOf, listOf, questionsOf, parseBulkQuestions, ptsOf,
+  PATH, LETTERS, LISTS, LIST_LABEL, ALL_CORRECT, keyLabel,
+  listOf, questionsOf, parseBulkQuestions, ptsOf,
   blocksOf, groupBlocks, isSoloMedia, videoEmbed, isVideoUrl, webpSrc, normalizeBlock,
   BLOCK_TYPES, BLOCK_SIZES, DEFAULT_BLOCK_SIZE,
   BLOCK_WIDTHS, BLOCK_ALIGNS,
   TEXT_SIZE_VH, IMG_SIZE_VH,
   $, show, toast, escapeHtml, isHost, notHostHtml
 } from "./common.js";
-
-// 類別下拉選單與批次匯入的說明文字
-$("#ed-cat").innerHTML =
-  `<option value="">${UNCATEGORIZED.name}</option>` +
-  CATEGORIES.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
-$("#bulk-cats").innerHTML =
-  CATEGORIES.map(c => `<code style="color:${c.color}">${escapeHtml(c.name)}</code>`).join(" ");
 
 let questions = {}, keys = {}, intro = {};
 let editing = null;            // 正在編輯的題目 id；"new" 代表新增
@@ -265,7 +258,6 @@ function paintQuestions() {
   $("#sel-list").value = curList;
 
   $("#q-list").innerHTML = list.map((q, i) => {
-    const cat = categoryOf(q.cat);
     const blks  = blocksOf(q);
     const hasEx = blks.length > 0 || !!(q.exImgFull || "").trim() || !!(q.exAudio || "").trim();
     const nImg  = blks.filter(b => b.t === "img").length;
@@ -275,10 +267,9 @@ function paintQuestions() {
       <div class="head">
         <span class="no">第 ${i + 1} 題</span>
         <span class="txt">${escapeHtml(q.text || "（無題幹）")}</span>
-        <span class="ans">${keys[q.id] ? "正解 " + keys[q.id] : "⚠ 無正解"}</span>
+        <span class="ans">${keys[q.id] ? "正解 " + keyLabel(keys[q.id]) : "⚠ 無正解"}</span>
       </div>
       <div class="meta">
-        <span class="cat-pill" style="--cat:${cat.color}">${escapeHtml(cat.name)}</span>
         ${ptsOf(q) !== 1 ? `<span class="flag ok">配分 +${ptsOf(q)}</span>` : ""}
         <span class="flag ${hasEx ? "ok" : "warn"}">${hasEx ? "有說明" : "⚠ 沒有說明"}</span>
         ${blks.length ? `<span class="flag">${blks.length} 個區塊${nImg ? `・${nImg} 圖` : ""}${nVid ? `・${nVid} 影片` : ""}</span>` : ""}
@@ -317,7 +308,6 @@ function openEditor(qid) {
     ? `新增題目（${LIST_LABEL[curList]}）`
     : `編輯第 ${no} 題（${LIST_LABEL[listOf(q)]}）`;
 
-  $("#ed-cat").value    = q.cat || "";
   $("#ed-pts").value    = ptsOf(q);
   $("#ed-list").value   = qid === "new" ? curList : listOf(q);
   $("#ed-text").value   = q.text || "";
@@ -351,7 +341,6 @@ $("#ed-save").addEventListener("click", async () => {
   if (!text) { toast("請輸入題幹"); return; }
 
   const data = { text };
-  if ($("#ed-cat").value) data.cat = $("#ed-cat").value;
   data.list = $("#ed-list").value === LISTS.DEMO ? LISTS.DEMO : LISTS.MAIN;
 
   const pts = Math.round(Number($("#ed-pts").value));
@@ -377,7 +366,7 @@ $("#ed-save").addEventListener("click", async () => {
   if (!data.a || !data.b) { toast("至少要填 A、B 兩個選項"); return; }
 
   const key = $("#ed-key").value;
-  if (!data[key.toLowerCase()]) { toast(`正解設為 ${key}，但選項 ${key} 是空的`); return; }
+  if (key !== ALL_CORRECT && !data[key.toLowerCase()]) { toast(`正解設為 ${key}，但選項 ${key} 是空的`); return; }
 
   const qid = editing === "new" ? newId("q") : editing;
   data.order = editing === "new"

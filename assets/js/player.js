@@ -6,7 +6,8 @@
 import {
   db, ref, onValue, set, serverTimestamp, ensureAnonAuth,
   PATH, PHASE, LETTERS, LISTS, DEFAULT_LIMIT_SEC,
-  categoryOf, questionsOf, secondsLeft, ptsOf, elapsedMs, fmtSec, cleanName,
+  questionsOf, secondsLeft, ptsOf, elapsedMs, fmtSec, cleanName,
+  ALL_CORRECT, isCorrect, isKeyLetter, keyLabel,
   $, show, toast, escapeHtml
 } from "./common.js";
 
@@ -175,7 +176,6 @@ function renderQuestion(qid, q, phase) {
     pending = null;
     $("#q-no").textContent   = questionNo(qid);
     $("#q-text").textContent = q.text || "";
-    paintCatPill($("#q-cat"), q);
 
     const pts = ptsOf(q);
     $("#q-pts").textContent = "+" + pts;
@@ -279,13 +279,6 @@ function startCountdown() {
 // ------------------------------------------------------------
 //  公布答案
 // ------------------------------------------------------------
-function paintCatPill(el, q) {
-  const cat = categoryOf(q?.cat);
-  el.textContent = cat.name;
-  el.style.setProperty("--cat", cat.color);
-  el.parentElement.style.display = q?.cat ? "" : "none";
-}
-
 function detachReveal() {
   if (unsubKey)     { unsubKey();     unsubKey = null; }
   if (unsubStats)   { unsubStats();   unsubStats = null; }
@@ -300,14 +293,15 @@ function renderReveal(qid, q) {
   revealedQid = qid;
 
   $("#r-no").textContent = questionNo(qid);
-  paintCatPill($("#r-cat"), q);
 
   let key = null, mine = null, stats = null;
 
   const repaint = () => {
     const k = key || stats?.key || null;
-    $("#r-letter").textContent = k || "—";
-    $("#r-opt").textContent = k ? (q[k.toLowerCase()] || "").trim() : "";
+    $("#r-letter").textContent = k ? keyLabel(k) : "—";
+    $("#r-letter").classList.toggle("all", k === ALL_CORRECT);
+    $("#r-opt").textContent = k === ALL_CORRECT ? "這題選哪個都算對！"
+                            : k ? (q[k.toLowerCase()] || "").trim() : "";
 
     const pts = doubles[qid] === uid ? ptsOf(q) * 2 : ptsOf(q);
     const v = $("#r-verdict");
@@ -315,7 +309,7 @@ function renderReveal(qid, q) {
     if (!mine?.c) {
       v.className = "verdict"; v.textContent = "這題你沒有作答";
       $("#r-sub").textContent = "";
-    } else if (k && mine.c === k) {
+    } else if (k && isCorrect(mine.c, k)) {
       v.className = "verdict ok"; v.textContent = `答對了！+${pts} 分`;
       $("#r-sub").textContent = `作答時間 ${fmtSec(ms)}` + (doubles[qid] === uid ? "　（轉盤 ×2）" : "");
     } else {
@@ -331,7 +325,7 @@ function renderReveal(qid, q) {
         const n = t[L] || 0, pct = t.total ? Math.round(n / t.total * 100) : 0;
         return `<div class="bar-row">
           <span class="bar-key">${L}</span>
-          <span class="bar-track"><span class="bar-fill${L === k ? " is-correct" : ""}" style="width:${pct}%"></span></span>
+          <span class="bar-track"><span class="bar-fill${k && isKeyLetter(L, k) ? " is-correct" : ""}" style="width:${pct}%"></span></span>
           <span class="bar-num">${pct}%（${n}）</span>
         </div>`;
       }).join("");
@@ -397,11 +391,4 @@ function renderFinal() {
   $("#final-me-no").textContent = `第 ${r.rank} 名`;
   $("#final-me-note").textContent =
     `${r.points} 分・答對 ${r.correct} 題・答對題目共花 ${fmtSec(r.timeMs)}　（共 ${r.total} 人）`;
-
-  show($("#final-cat-box"), !!r.bestCat);
-  if (r.bestCat) {
-    const cat = categoryOf(r.bestCat);
-    $("#final-cat").textContent = `${cat.name}　${r.bestCatPoints}/${r.bestCatMax}`;
-    $("#final-cat").style.setProperty("--cat", cat.color);
-  }
 }

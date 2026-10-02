@@ -27,7 +27,6 @@
   .top .brand small { display: none; }
   .top .qbadge { font-size: 3.2vh; padding: 1.2vh 2.2vw; }
   .top .qbadge b { font-size: 4.2vh; }
-  .top .cat-pill { font-size: 2.7vh; padding: 1vh 1.8vw; }
 
   /* 配分徽章：只有不是 +1 的題目才會出現 */
   .pts-badge {
@@ -187,6 +186,8 @@
   .reveal-top { display: flex; gap: 2vw; align-items: stretch; flex: 1 1 auto; min-height: 0; }
   .reveal-ans { flex: 0 0 21%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .reveal-ans .reveal-letter { font-size: 20vh; }
+  /* 正解是「都正確」：三個字，縮到那一欄放得下 */
+  .reveal-ans .reveal-letter.all { font-size: 8.5vh; white-space: nowrap; padding: 2vh 0; }
   .reveal-ans .reveal-opt {
     margin-top: .6vh; max-width: 100%;
     font-size: var(--ofs, 2.8vh); font-weight: 900; line-height: 1.3;
@@ -386,21 +387,6 @@
   .confetti i { position: absolute; top: -6vh; width: 1.1vh; height: 2.2vh; border-radius: .2vh; animation: fall linear forwards; }
   @keyframes fall { to { transform: translateY(112vh) rotate(760deg); opacity: .15; } }
 
-  /* ---------- 各類別機智王 ---------- */
-  .champs { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-            grid-auto-rows: minmax(0, 1fr); gap: 2.4vh 2vw; }
-  .champ {
-    min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vh;
-    border-radius: 1.6vh; border: .4vh solid var(--cat);
-    background: linear-gradient(180deg, rgba(8,22,96,.8), rgba(2,8,48,.85));
-    box-shadow: 0 0 3vh color-mix(in srgb, var(--cat) 55%, transparent);
-  }
-  .champ .cat-pill { font-size: 2.8vh; padding: .8vh 1.6vw; }
-  .champ .nm { font-size: 5.4vh; font-weight: 900; color: var(--gold-lt); max-width: 92%;
-               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .champ .sc { font-size: 2.4vh; color: var(--txt-dim); }
-  .champ.none .nm { color: #5f6f9c; }
-
   /* ============================================================
      加倍轉盤
      ============================================================ */
@@ -479,7 +465,6 @@
 
   <div class="top">
     <div class="brand"><span class="star">✦</span><span class="t">崇德機智星</span></div>
-    <span class="cat-pill" id="s-cat">—</span>
     <span class="pts-badge" id="s-pts" style="display:none">+1</span>
     <span class="dbl-pill" id="s-dbl" style="display:none">🎡 ×2</span>
     <span class="qbadge" id="s-badge">第 <b>–</b> 題</span>

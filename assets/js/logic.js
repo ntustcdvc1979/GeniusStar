@@ -25,23 +25,31 @@ export const DEFAULT_LIMIT_SEC = 20;
 export const NAME_MAX = 12;
 
 /**
- * 題目類別。要增減或改名直接改這裡；
- * 已存在的題目是用 id 存的，改 name 不會影響舊資料。
+ * 正解：A～D，或 ALL「都正確」—— 那一題只要有送出答案，選哪個都算對。
+ * （沒送出的人還是 0 分，「都正確」不會讓沒作答的人白拿分）
  */
-export const CATEGORIES = [
-  { id: "social",   name: "人際網絡高手", color: "#e6266f" },
-  { id: "goodwill", name: "親善大使",     color: "#f0ad00" },
-  { id: "food",     name: "美食小當家",   color: "#14a05a" },
-  { id: "time",     name: "時間管理大師", color: "#dd7b0e" },
-  { id: "emotion",  name: "情緒管理大師", color: "#8b5cf6" },
-  { id: "team",     name: "團隊領航員",   color: "#2f7bf6" }
-];
+export const ALL_CORRECT = "ALL";
+export const KEYS = [...LETTERS, ALL_CORRECT];
 
-export const UNCATEGORIZED = { id: "uncat", name: "未分類", color: "#7b8bb5" };
+/** 這是一個合法的正解嗎 */
+export const isKey = key => KEYS.includes(key);
 
-/** 由 id 取回類別（找不到就回傳「未分類」） */
-export function categoryOf(id) {
-  return CATEGORIES.find(c => c.id === id) || UNCATEGORIZED;
+/** 選 choice 算不算答對 */
+export function isCorrect(choice, key) {
+  if (!LETTERS.includes(choice)) return false;
+  return key === ALL_CORRECT ? true : choice === key;
+}
+
+/** 某個選項字母是不是正解（畫長條圖、標綠色用） */
+export const isKeyLetter = (letter, key) => key === ALL_CORRECT || letter === key;
+
+/** 正解要怎麼顯示：A～D 原樣，ALL 顯示「都正確」 */
+export const keyLabel = key => key === ALL_CORRECT ? "都正確" : (key || "");
+
+/** 這個答案有幾個人答對（作答分布 → 人數） */
+export function correctCount(t, key) {
+  if (!isKey(key)) return 0;
+  return key === ALL_CORRECT ? (t?.total || 0) : (t?.[key] || 0);
 }
 
 // ---------- 說明頁排版區塊 ----------
@@ -204,8 +212,9 @@ export function cleanName(raw) {
 
 /**
  * 解析批次貼上的題目。一行一題，用 | 分隔：
- *   題幹 | A選項 | B選項 | C選項 | D選項 | 正解字母 | 類別（可省略）
- * 回傳 [{ q:{text,a,b,c,d,cat}, key:"A" }…]，格式有問題就丟出帶行內容的錯誤。
+ *   題幹 | A選項 | B選項 | C選項 | D選項 | 正解
+ * 正解填 A/B/C/D，或「都正確」（也接受 ALL）。只有兩個選項就少寫兩欄。
+ * 回傳 [{ q:{text,a,b,c,d}, key:"A" }…]，格式有問題就丟出帶行內容的錯誤。
  */
 export function parseBulkQuestions(raw) {
   const out = [];
@@ -217,27 +226,17 @@ export function parseBulkQuestions(raw) {
     const parts = t.split("|").map(s => s.trim());
     if (parts.length < 4) throw new Error(`這行欄位不夠${where}`);
 
-    // 最後一欄可能是正解，也可能是類別（類別在正解後面）
-    let cat = "";
-    if (!LETTERS.includes((parts[parts.length - 1] || "").toUpperCase())) {
-      const named = parts.pop();
-      const found = CATEGORIES.find(c => c.name === named || c.id === named);
-      if (!found) throw new Error(`看不懂最後一欄「${named}」，要嘛是正解 A/B/C/D，要嘛是類別名稱${where}`);
-      cat = found.id;
-      if (!LETTERS.includes((parts[parts.length - 1] || "").toUpperCase())) {
-        throw new Error(`類別前面那一欄要是正解 A/B/C/D${where}`);
-      }
-    }
+    const last = parts.pop();
+    const key = /^(都正確|全對|ALL)$/i.test(last) ? ALL_CORRECT : last.toUpperCase();
+    if (!isKey(key)) throw new Error(`最後一欄要是正解 A/B/C/D 或「都正確」，讀到的是「${last}」${where}`);
 
-    const key = parts.pop().toUpperCase();
     const [text, a, b, c, d] = parts;
     if (!text || !a || !b) throw new Error(`題幹與 A、B 選項不能空白${where}`);
 
     const q = { text, a, b };
     if (c) q.c = c;
     if (d) q.d = d;
-    if (cat) q.cat = cat;
-    if (!q[key.toLowerCase()]) throw new Error(`正解是 ${key}，但選項 ${key} 沒有填${where}`);
+    if (key !== ALL_CORRECT && !q[key.toLowerCase()]) throw new Error(`正解是 ${key}，但選項 ${key} 沒有填${where}`);
 
     out.push({ q, key });
   }
@@ -306,9 +305,9 @@ export function fmtSec(ms) {
  * @returns [{ uid, name, ms }]
  */
 export function fastestCorrect(players, answersForQuestion, key, openedAt) {
-  if (!LETTERS.includes(key)) return [];
+  if (!isKey(key)) return [];
   return Object.entries(answersForQuestion || {})
-    .filter(([, a]) => a?.c === key)
+    .filter(([, a]) => isCorrect(a?.c, key))
     .map(([uid, a]) => ({ uid, name: players?.[uid]?.name || "（已離開）", ms: elapsedMs(a, openedAt) }))
     .sort((x, y) => (x.ms ?? Infinity) - (y.ms ?? Infinity) || x.name.localeCompare(y.name, "zh-Hant"));
 }
@@ -320,56 +319,40 @@ export function fastestCorrect(players, answersForQuestion, key, openedAt) {
  * @param players   /players          { uid:{name} }
  * @param answers   /answers          { qid:{ uid:{c,t} } }
  * @param openedAt  { qid: 出題時間 }  —— 由 /stats/{qid}/openedAt 組出來
- * @returns { rows:[…排好…], cats:[出現過的類別…], questionCount }
- *   row：{ uid, name, points, max, correct, answered, timeMs, byCat:{catId:{points,max,correct,timeMs}} }
+ * @returns { rows:[…排好…], questionCount }
+ *   row：{ uid, name, points, max, correct, answered, timeMs }
  */
 export function buildScoreboard(players, questions, answerKeys, answers, revealed,
                                 list = LISTS.MAIN, doubles = null, openedAt = null) {
   const qs = questionsOf(questions, list)
-    .filter(q => revealed?.[q.id] && LETTERS.includes(answerKeys?.[q.id]));
+    .filter(q => revealed?.[q.id] && isKey(answerKeys?.[q.id]));
 
-  const usedCats = new Set();
   const rows = Object.entries(players || {})
     .filter(([, p]) => p && typeof p.name === "string")
-    .map(([uid, p]) => ({
-      uid, name: p.name,
-      points: 0, max: 0, correct: 0, answered: 0, timeMs: 0,
-      byCat: {}
-    }));
+    .map(([uid, p]) => ({ uid, name: p.name, points: 0, max: 0, correct: 0, answered: 0, timeMs: 0 }));
 
   for (const q of qs) {
     const key = answerKeys[q.id];
-    const cat = categoryOf(q.cat).id;
-    usedCats.add(cat);
     const basePts = ptsOf(q);
     const doubledUid = doubles?.[q.id] || null;
 
     for (const row of rows) {
       const pts = row.uid === doubledUid ? basePts * DOUBLE_MULTIPLIER : basePts;
-      const bc = (row.byCat[cat] ??= { points: 0, max: 0, correct: 0, timeMs: 0 });
-      bc.max  += pts;
       row.max += pts;
 
       const a = answers?.[q.id]?.[row.uid];
       if (!LETTERS.includes(a?.c)) continue;
       row.answered++;
-      if (a.c !== key) continue;
+      if (!isCorrect(a.c, key)) continue;
 
-      const ms = elapsedMs(a, openedAt?.[q.id]) ?? 0;
       row.correct++;
       row.points += pts;
-      row.timeMs += ms;
-      bc.correct++;
-      bc.points += pts;
-      bc.timeMs += ms;
+      row.timeMs += elapsedMs(a, openedAt?.[q.id]) ?? 0;
     }
   }
 
-  const cats = CATEGORIES.filter(c => usedCats.has(c.id));
-  if (usedCats.has(UNCATEGORIZED.id)) cats.push(UNCATEGORIZED);
-
   rows.sort(compareRows);
-  return { rows, cats, questionCount: qs.length };
+  return { rows, questionCount: qs.length };
 }
 
 /** 排名的比較方式：分數 → 答對題數 → 答對的總作答時間（越短越前）→ 名字 */
@@ -392,46 +375,6 @@ export function ranksOf(rows) {
       ? out[i - 1] : i + 1);
   });
   return out;
-}
-
-/**
- * 每個類別最強的玩家：先比該類別得分率，再比得分，再比作答時間。
- * 一個人都沒拿到分的類別，best 是 null（不要把 0 分的人封成冠軍）。
- * @returns [{ cat, best:{uid,name,points,max,correct,timeMs,rate} | null }]
- */
-export function categoryChampions(board) {
-  return board.cats.map(cat => {
-    let best = null;
-    for (const r of board.rows) {
-      const v = r.byCat[cat.id];
-      if (!v || !v.points) continue;
-      const cand = { uid: r.uid, name: r.name, ...v, rate: v.max ? Math.round(v.points / v.max * 1000) / 10 : 0 };
-      if (!best ||
-          cand.rate > best.rate ||
-          (cand.rate === best.rate && (cand.points > best.points ||
-            (cand.points === best.points && cand.timeMs < best.timeMs)))) {
-        best = cand;
-      }
-    }
-    return { cat, best };
-  });
-}
-
-/**
- * 一個人最擅長的類別（得分率最高，平手比得分）。沒拿到任何分數就是 null。
- * @returns { cat, points, max } | null
- */
-export function bestCategoryOf(row, cats) {
-  let best = null;
-  for (const cat of cats) {
-    const v = row.byCat?.[cat.id];
-    if (!v || !v.points) continue;
-    const rate = v.points / v.max;
-    if (!best || rate > best.rate || (rate === best.rate && v.points > best.points)) {
-      best = { cat, points: v.points, max: v.max, rate };
-    }
-  }
-  return best && { cat: best.cat, points: best.points, max: best.max };
 }
 
 // ---------- 倒數計時 ----------

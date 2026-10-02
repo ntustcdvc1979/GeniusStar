@@ -5,7 +5,7 @@
 // ============================================================
 
 import {
-  buildScoreboard, ranksOf, categoryChampions, bestCategoryOf, fastestCorrect,
+  buildScoreboard, ranksOf, fastestCorrect, isCorrect, isKey, keyLabel, correctCount, ALL_CORRECT,
   tally, elapsedMs, fmtSec, cleanName, parseBulkQuestions, questionsOf, ptsOf,
   wheelPool, wheelSlots, randomIndex, secondsLeft, blocksOf, groupBlocks, videoEmbed, webpSrc,
   LISTS, WHEEL_MAX_SLOTS
@@ -20,14 +20,14 @@ export function run() {
   };
 
   // ════════ 佈景 ════════
-  //  四位玩家。q1/q2 正式（社交）、q3 正式（情緒，配分 3）、q4 正式未公布、q5 DEMO。
+  //  四位玩家。q1/q2 正式、q3 正式（配分 3）、q4 正式未公布、q5 DEMO。
   const players = { u1: { name: "阿明" }, u2: { name: "小華" }, u3: { name: "大雄" }, u4: { name: "靜香" } };
   const questions = {
-    q1: { order: 0, text: "T1", a: "a", b: "b", cat: "social",  list: "main" },
-    q2: { order: 1, text: "T2", a: "a", b: "b", cat: "social",  list: "main" },
-    q3: { order: 2, text: "T3", a: "a", b: "b", cat: "emotion", list: "main", pts: 3 },
-    q4: { order: 3, text: "T4", a: "a", b: "b", cat: "emotion", list: "main" },
-    q5: { order: 0, text: "D1", a: "a", b: "b", cat: "social",  list: "demo" }
+    q1: { order: 0, text: "T1", a: "a", b: "b", list: "main" },
+    q2: { order: 1, text: "T2", a: "a", b: "b", list: "main" },
+    q3: { order: 2, text: "T3", a: "a", b: "b", list: "main", pts: 3 },
+    q4: { order: 3, text: "T4", a: "a", b: "b", list: "main" },
+    q5: { order: 0, text: "D1", a: "a", b: "b", list: "demo" }
   };
   const keys = { q1: "A", q2: "B", q3: "A", q4: "A", q5: "A" };
   const revealed = { q1: true, q2: true, q3: true, q5: true };
@@ -76,7 +76,6 @@ export function run() {
   ok("排序：靜香 4 → 大雄 3 → 阿明 2（3 秒）→ 小華 2（7 秒）",
     board.rows.map(r => r.uid).join() === "u4,u3,u1,u2", board.rows.map(r => r.name).join(" > "));
   ok("名次", ranksOf(board.rows).join() === "1,2,3,4");
-  ok("類別只列出有出現的", board.cats.map(c => c.id).join() === "social,emotion");
 
   // 同分同題數同秒 → 並列
   const tie = ranksOf([
@@ -103,18 +102,24 @@ export function run() {
   const b4 = buildScoreboard(players, questions, { ...keys, q3: undefined }, answers, revealed, LISTS.MAIN, null, openedAt);
   ok("沒設正解的題目不計分", b4.questionCount === 2);
 
-  // ════════ 4. 類別 ════════
-  const champs = categoryChampions(board);
-  const cs = Object.fromEntries(champs.map(c => [c.cat.id, c.best?.uid]));
-  //  社交：u1 2/2 3s、u2 2/2 7s → 阿明（同率同分比時間）
-  //  情緒：u3 3/3、u4 3/3 → 同率同分，大雄 5 秒比靜香 9 秒快
-  ok("社交類冠軍：阿明（同分比時間）", cs.social === "u1");
-  ok("情緒類冠軍：大雄", cs.emotion === "u3");
-  ok("一分都沒有的類別不封冠軍",
-    categoryChampions({ cats: [{ id: "x" }], rows: [{ uid: "a", name: "a", byCat: { x: { points: 0, max: 2 } } }] })[0].best === null);
-  const best1 = bestCategoryOf(by.u4, board.cats);
-  ok("個人最強類別：靜香 → 情緒 3/3", best1?.cat.id === "emotion" && best1.points === 3);
-  ok("個人最強類別：沒拿分 → null", bestCategoryOf({ byCat: {} }, board.cats) === null);
+  // ════════ 4. 都正確 ════════
+  ok("都正確：選什麼都算對", ["A", "B", "C", "D"].every(L => isCorrect(L, ALL_CORRECT)));
+  ok("都正確：沒作答還是不算對", !isCorrect(undefined, ALL_CORRECT) && !isCorrect("Z", ALL_CORRECT));
+  ok("一般正解：只有那個字母對", isCorrect("B", "B") && !isCorrect("A", "B"));
+  ok("isKey", isKey("ALL") && isKey("D") && !isKey("E") && !isKey(""));
+  ok("keyLabel", keyLabel("ALL") === "都正確" && keyLabel("C") === "C");
+  ok("correctCount", correctCount({ A: 2, B: 3, C: 0, D: 1, total: 6 }, "ALL") === 6 &&
+    correctCount({ A: 2, B: 3, total: 5 }, "B") === 3 && correctCount({ total: 5 }, null) === 0);
+
+  //  q2 改成都正確：u1 u2 u4 有作答 → 全部答對；u3 沒作答 → 0 分
+  const bAll = buildScoreboard(players, questions, { ...keys, q2: ALL_CORRECT }, answers, revealed, LISTS.MAIN, null, openedAt);
+  const byAll = Object.fromEntries(bAll.rows.map(r => [r.uid, r]));
+  ok("都正確的題目：有作答的人都拿分", byAll.u1.points === 2 && byAll.u2.points === 2 && byAll.u4.points === 5,
+    bAll.rows.map(r => `${r.name}:${r.points}`).join(" "));
+  ok("都正確的題目：沒作答的人不拿分", byAll.u3.points === 3 && byAll.u3.correct === 1);
+  ok("都正確的題目：作答時間照算", byAll.u4.timeMs === 17000 + 2000);
+  ok("都正確：最快答對列出所有作答的人",
+    fastestCorrect(players, answers.q2, ALL_CORRECT, openedAt.q2).map(f => f.uid).join() === "u1,u4,u2");
 
   // ════════ 5. 轉盤 ════════
   const pool = wheelPool(players, { q1: "u1" });
@@ -140,8 +145,12 @@ export function run() {
   ok("randomIndex 大致均勻", counts.every(c => c > 850 && c < 1150), counts.join("/"));
 
   // ════════ 6. 批次匯入與題庫 ════════
-  const bulk = parseBulkQuestions("台灣最高的建築？|101|85|歌劇院|赤崁樓|A|親善大使\n只有兩個選項？|甲|乙|B");
-  ok("批次匯入：兩行兩題", bulk.length === 2 && bulk[0].key === "A" && bulk[0].q.cat === "goodwill" && bulk[1].q.d === undefined);
+  const bulk = parseBulkQuestions("台灣最高的建築？|101|85|歌劇院|赤崁樓|A\n只有兩個選項？|甲|乙|B\n你喜歡哪個？|貓|狗|都正確\n開放題|甲|乙|丙|all");
+  ok("批次匯入：四行四題", bulk.length === 4 && bulk[0].key === "A" && bulk[1].q.c === undefined && bulk[1].q.d === undefined);
+  ok("批次匯入：「都正確」與 ALL 都認得", bulk[2].key === ALL_CORRECT && bulk[3].key === ALL_CORRECT && bulk[3].q.c === "丙");
+  let threw2 = false;
+  try { parseBulkQuestions("題目|甲|乙|丙|親善大使"); } catch { threw2 = true; }
+  ok("批次匯入：最後一欄不是正解會擋下（類別欄已拿掉）", threw2);
   let threw = false;
   try { parseBulkQuestions("題目|甲|乙|C"); } catch { threw = true; }
   ok("批次匯入：正解選項沒填會擋下", threw);

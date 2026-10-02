@@ -9,9 +9,9 @@
 import {
   db, auth, ref, onValue, update, onAuthStateChanged,
   PATH, PHASE, LISTS, LETTERS, DEFAULT_LIMIT_SEC,
-  categoryOf, questionsOf, tally, secondsLeft, isHost, ptsOf, fmtSec, fastestCorrect, openedAtOf,
+  questionsOf, tally, ALL_CORRECT, isKeyLetter, keyLabel, correctCount, secondsLeft, isHost, ptsOf, fmtSec, fastestCorrect, openedAtOf,
   blocksOf, groupBlocks, isSoloMedia, videoEmbed, isVideoUrl, isAudioUrl, webpSrc, TEXT_SIZE_VH, IMG_SIZE_VH,
-  buildScoreboard, ranksOf, categoryChampions,
+  buildScoreboard, ranksOf,
   wheelPool, wheelSlots, $, show, escapeHtml, playerUrl, qrDataUrl
 } from "./common.js";
 
@@ -31,13 +31,12 @@ const tip   = $("#s-tip");
 const STANDINGS_EVERY = 5;
 const STANDINGS_TOP   = 10;
 const PODIUM_TOP      = 3;
-// 名次揭曉完先回到主視覺，最後才是各類別機智王
+// 名次揭曉完回到主視覺收尾
 const FINAL_COVER     = PODIUM_TOP + 1;
-const FINAL_CHAMPS    = PODIUM_TOP + 2;
 
 let introPage  = 0;   // 開場：黑畫面 →（開場影片）→ 主視覺 → 規則 → 掃碼進場
 let revealPage = 0;   // 公布：答案與說明 →（補充說明）→（目前戰況）→ 全場分布
-let podiumStep = 0;   // 排行榜：0 還沒開始 → 3 全部揭曉 → 4 主視覺 → 5 各類別機智王
+let podiumStep = 0;   // 排行榜：0 還沒開始 → 3 全部揭曉 → 4 主視覺
 
 // ------------------------------------------------------------
 //  音效解鎖
@@ -552,14 +551,14 @@ function currentPageLabel() {
     return `公布答案 ${i + 1}/${pages.length}　${PAGE_NAME[pages[i]] || ""}`;
   }
   if (phase === PHASE.FINAL) {
-    const names = ["還沒開始", "第三名", "第二名", "第一名", "主視覺", "各類別機智王"];
-    return `排行榜 ${podiumStep + 1}/${FINAL_CHAMPS + 1}　${names[podiumStep] || ""}`;
+    const names = ["還沒開始", "第三名", "第二名", "第一名", "主視覺"];
+    return `排行榜 ${podiumStep + 1}/${FINAL_COVER + 1}　${names[podiumStep] || ""}`;
   }
   return "";
 }
 
 function stepPodium(dir) {
-  const next = clamp(podiumStep + dir, 0, FINAL_CHAMPS);
+  const next = clamp(podiumStep + dir, 0, FINAL_COVER);
   if (next === podiumStep) return;
   podiumStep = next;
   if (dir > 0 && podiumStep >= 1 && podiumStep <= PODIUM_TOP) {
@@ -695,10 +694,6 @@ function paintNow() {
   badge.innerHTML = onQuestion ? `第 <b>${qIndex(qid) + 1}</b> 題` : "";
   badge.style.display = onQuestion ? "" : "none";
 
-  const cat = categoryOf(q?.cat);
-  $("#s-cat").textContent = onQuestion ? cat.name : "";
-  $("#s-cat").style.setProperty("--cat", cat.color);
-  $("#s-cat").style.display = onQuestion && q?.cat ? "" : "none";
 
   const pts = ptsOf(q);
   $("#s-pts").textContent = "+" + pts;
@@ -1003,7 +998,7 @@ function paintReveal(qid, q) {
   foot.textContent = "已公布答案";
   const key = keys[qid] || stats[qid]?.key;
   const t = tally(answers[qid]);
-  const right = key ? t[key] : 0;
+  const right = correctCount(t, key);
   const total = Object.keys(players).length;
   const fast = (stats[qid]?.fastest
     ? Object.values(stats[qid].fastest)
@@ -1013,8 +1008,9 @@ function paintReveal(qid, q) {
     <div class="reveal-top">
       <div class="reveal-ans">
         <div class="title-gold" style="font-size:2.8vh;"><span class="emoji">🎉</span> 正確答案 <span class="emoji">🎉</span></div>
-        <div class="reveal-letter">${key || "—"}</div>
-        ${optionText(q, key) ? `<div class="reveal-opt">${escapeHtml(optionText(q, key))}</div>` : ""}
+        <div class="reveal-letter${key === ALL_CORRECT ? " all" : ""}">${key ? escapeHtml(keyLabel(key)) : "—"}</div>
+        ${key === ALL_CORRECT ? `<div class="reveal-opt">這題選哪個都算對！</div>`
+          : optionText(q, key) ? `<div class="reveal-opt">${escapeHtml(optionText(q, key))}</div>` : ""}
       </div>
       <div class="reveal-ex">
         <h3 class="title-gold" style="font-size:3vh; margin:0 0 1vh;"><span class="emoji">💡</span> 說明</h3>
@@ -1049,7 +1045,7 @@ function paintReveal(qid, q) {
 }
 
 function optionText(q, key) {
-  if (!q || !key) return "";
+  if (!q || !key || key === ALL_CORRECT) return "";
   return (q[String(key).toLowerCase()] || "").trim();
 }
 
@@ -1181,13 +1177,13 @@ function paintDistribution(qid, q) {
         return `<div class="bar-row">
           <span class="bar-key">${L}</span>
           <span class="bar-opt">${escapeHtml(q[L.toLowerCase()])}</span>
-          <span class="bar-track"><span class="bar-fill${L === key ? " is-correct" : ""}" style="width:${pct}%"></span></span>
+          <span class="bar-track"><span class="bar-fill${key && isKeyLetter(L, key) ? " is-correct" : ""}" style="width:${pct}%"></span></span>
           <span class="bar-num">${pct}%（${n}）</span>
         </div>`;
       }).join("")}
     </div>
     <p class="hint center" style="font-size:2.2vh; margin:1.4vh 0 0;">
-      共 ${t.total} 人作答　正解 <b style="color:var(--gold)">${key || "—"}</b>
+      共 ${t.total} 人作答　正解 <b style="color:var(--gold)">${key ? keyLabel(key) : "—"}</b>
     </p>`;
 }
 
@@ -1227,13 +1223,12 @@ function paintStandings(qid) {
 }
 
 // ============================================================
-//  最終：排行榜（只公布前三名，逐一揭曉）→ 主視覺 → 各類別機智王
+//  最終：排行榜（只公布前三名，逐一揭曉）→ 主視覺
 // ============================================================
 function paintFinal() {
   const rows = board?.final ? (board.rows || []) : scoreboardNow().rows;
 
-  if (podiumStep === FINAL_COVER)  { foot.textContent = "結束畫面"; return paintCover(); }
-  if (podiumStep >= FINAL_CHAMPS)  return paintChamps();
+  if (podiumStep >= FINAL_COVER)  { foot.textContent = "結束畫面"; return paintCover(); }
 
   foot.textContent = "排行榜";
   tip.textContent = podiumStep === 0
@@ -1283,27 +1278,4 @@ function dropConfetti() {
   wrap.innerHTML = html;
   stage.appendChild(wrap);
   setTimeout(() => wrap.remove(), 9000);
-}
-
-/** 各類別機智王：每個類別得分率最高的那個人 */
-function paintChamps() {
-  foot.textContent = "各類別機智王";
-  tip.textContent  = "← 按 ← 回到主視覺";
-
-  const champs = categoryChampions(scoreboardNow());
-  if (!champs.length) {
-    body.innerHTML = `<p class="hint center" style="font-size:2.8vh;">還沒有已公布的正式題目</p>`;
-    return;
-  }
-  const cols = champs.length <= 4 ? Math.max(1, champs.length) : 3;
-  body.innerHTML = `
-    <h2 class="title-gold center" style="font-size:6vh; margin:0 0 2vh;">★ 各類別機智王 ★</h2>
-    <div class="champs" style="grid-template-columns:repeat(${cols}, minmax(0, 1fr));">
-      ${champs.map(({ cat, best }) => `
-        <div class="champ${best ? "" : " none"}" style="--cat:${cat.color}">
-          <span class="cat-pill" style="--cat:${cat.color}">${escapeHtml(cat.name)}</span>
-          <span class="nm">${best ? escapeHtml(best.name) : "從缺"}</span>
-          <span class="sc">${best ? `${best.points} / ${best.max} 分・答對 ${best.correct} 題` : ""}</span>
-        </div>`).join("")}
-    </div>`;
 }

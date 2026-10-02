@@ -91,9 +91,9 @@ export function authErrorText(e) {
 //
 //  /admins/{uid}                     = true                     ← 主持人白名單（共用）
 //  /gs/config/intro                  = { rulesImg, heroImg, video }   ← 開場畫面（選填）
-//  /gs/questions/{qid}               = { order, text, a,b,c,d, cat, list, pts,
+//  /gs/questions/{qid}               = { order, text, a,b,c,d, list, pts,
 //                                        blocks:[…], exImgFull, exAudio } ← 公開可讀，不含正解
-//  /gs/answerKey/{qid}               = "A"                      ← 只有公布後才讀得到
+//  /gs/answerKey/{qid}               = "A"～"D"，或 "ALL"（都正確） ← 只有公布後才讀得到
 //  /gs/state                         = { phase, list, qid, openedAt, limitSec,
 //                                        revealed:{qid:true}, pendingDouble,
 //                                        wheel:{id,uid}, cue:{id,kind}, nav:{id,dir}, screenPage }

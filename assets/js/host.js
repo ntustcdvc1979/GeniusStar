@@ -6,8 +6,9 @@ import {
   db, auth, ref, onValue, set, update, remove, serverTimestamp,
   signInWithGoogle, consumeRedirectResult, authErrorText, signOut, onAuthStateChanged,
   PATH, PHASE, LISTS, LIST_LABEL, LETTERS, DEFAULT_LIMIT_SEC,
-  categoryOf, questionsOf, tally, secondsLeft, ptsOf, elapsedMs, fmtSec,
-  buildScoreboard, ranksOf, categoryChampions, bestCategoryOf, fastestCorrect, openedAtOf,
+  questionsOf, tally, secondsLeft, ptsOf, elapsedMs, fmtSec,
+  isCorrect, isKeyLetter, keyLabel, correctCount,
+  buildScoreboard, ranksOf, fastestCorrect, openedAtOf,
   isHost, notHostHtml, $, show, toast, escapeHtml,
   wheelPool, randomIndex, playerUrl, qrDataUrl
 } from "./common.js";
@@ -286,13 +287,7 @@ function computeBoard(extraRevealed = {}, extraOpened = {}) {
 
 async function publishBoard(board, final) {
   const ranks = ranksOf(board.rows);
-  const rows = board.rows.map((r, i) => {
-    const { byCat, ...rest } = r;          // byCat 不用送到玩家端
-    const best = bestCategoryOf(r, board.cats);
-    return best
-      ? { ...rest, rank: ranks[i], bestCat: best.cat.id, bestCatPoints: best.points, bestCatMax: best.max }
-      : { ...rest, rank: ranks[i] };
-  });
+  const rows = board.rows.map((r, i) => ({ ...r, rank: ranks[i] }));
   await set(ref(db, PATH.leaderboard), {
     updatedAt: Date.now(), final: !!final, questions: board.questionCount, rows
   });
@@ -312,14 +307,14 @@ async function doReveal() {
     .map(f => ({ uid: f.uid, name: f.name, ms: f.ms ?? 0 }));
 
   await set(ref(db, `${PATH.stats}/${qid}`), {
-    ...t, key, correct: t[key] || 0, openedAt, fastest
+    ...t, key, correct: correctCount(t, key), openedAt, fastest
   });
   await update(ref(db, PATH.state), { phase: PHASE.REVEAL, qid, [`revealed/${qid}`]: true });
 
   if (questions[qid] && (questions[qid].list || LISTS.MAIN) === LISTS.MAIN) {
     await publishBoard(computeBoard({ [qid]: true }, { [qid]: openedAt }), false);
   }
-  toast("已公布答案：" + key);
+  toast("已公布答案：" + keyLabel(key));
 }
 
 /** 結束：算出最終排行榜，投影幕與玩家手機都會切過去 */
@@ -410,14 +405,11 @@ function paint() {
   const q   = qid ? questions[qid] : null;
   const key = qid ? keys[qid] : null;
 
-  const cat = categoryOf(q?.cat);
-  $("#live-cat").textContent = q ? cat.name : "—";
-  $("#live-cat").style.setProperty("--cat", cat.color);
 
   $("#live-q").textContent = q
     ? `第 ${qIndex(qid) + 1} 題${ptsOf(q) !== 1 ? `（本題 +${ptsOf(q)}）` : ""}　${q.text || ""}`
     : "尚未選擇題目";
-  $("#live-key").textContent = key || "（未設定）";
+  $("#live-key").textContent = key ? keyLabel(key) : "（未設定）";
 
   const nPlayers = Object.keys(players).length;
   const t = tally(answers[qid]);
@@ -439,7 +431,7 @@ function paint() {
     ? top.map((r, i) => {
         const a = answers[qid]?.[r.uid];
         const now = LETTERS.includes(a?.c)
-          ? `${a.c}${key && a.c === key ? " ✓" : ""}<small style="opacity:.6"> ${fmtSec(elapsedMs(a, openedAt))}</small>`
+          ? `${a.c}${isCorrect(a.c, key) ? " ✓" : ""}<small style="opacity:.6"> ${fmtSec(elapsedMs(a, openedAt))}</small>`
           : "–";
         return `<tr class="${i === 0 && r.points ? "top1" : ""}">
           <td>${ranks[i]}</td>
@@ -461,7 +453,6 @@ function paint() {
 
   paintPageNav();
   paintCue();
-  paintChamps(board);
   paintPlayers(board);
 }
 
@@ -472,22 +463,10 @@ function bars(q, t, key) {
     const n = t[L], pct = total ? Math.round(n / total * 100) : 0;
     return `<div class="bar-row">
       <span class="bar-key">${L}</span>
-      <span class="bar-track"><span class="bar-fill${L === key ? " is-correct" : ""}" style="width:${pct}%"></span></span>
+      <span class="bar-track"><span class="bar-fill${key && isKeyLetter(L, key) ? " is-correct" : ""}" style="width:${pct}%"></span></span>
       <span class="bar-num">${n}（${pct}%）</span>
     </div>`;
   }).join("");
-}
-
-function paintChamps(board) {
-  const champs = categoryChampions(board);
-  $("#mx-champs").innerHTML = champs.length
-    ? champs.map(({ cat, best }) => `
-        <div class="row" style="align-items:center; gap:8px;">
-          <span class="cat-pill" style="--cat:${cat.color}">${escapeHtml(cat.name)}</span>
-          <span style="font-weight:800;">${best ? escapeHtml(best.name) : "—"}</span>
-          <span style="color:var(--gold-lt); font-weight:800;">${best ? `${best.points}/${best.max}` : ""}</span>
-        </div>`).join("")
-    : `<p class="hint" style="text-align:left; margin:0;">還沒有已公布的正式題目。</p>`;
 }
 
 function paintPlayers(board) {
