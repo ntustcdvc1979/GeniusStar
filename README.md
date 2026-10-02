@@ -110,6 +110,9 @@ GitHub repo → **Settings → Pages** → Source 選 **`GitHub Actions`**。之
 2. **開場畫面**（選填，留空就用內建的）：主視覺圖、開場影片、規則頁的圖。
 3. **題目**：選「正式 / DEMO」題庫，新增題目。每題可以填題幹、A～D、正解（A～D 或「都正確」）、配分、
    說明排版（小標題／文字／圖片／影片）、整頁大圖或影片、說明音檔 —— 跟大學星攻略的後台一模一樣。
+   **隱藏（備用題）**：題目列表每題都有「🙈 隱藏」，編輯器裡也有勾選框。
+   隱藏的題目會留在後台（淡色虛線框、標「備用」），但**控制台選不到、不佔題號、不計分**，
+   想用的時候按「👁 取消隱藏」就會照原本的順序回來。
 4. 也可以用「批次貼上」一次匯入，一行一題：
 
    ```
@@ -200,8 +203,8 @@ assets/
 ```
 /admins/{uid}                 true                    ← 主持人白名單（跟 cdfreshmen 共用）
 /gs/config/intro              { heroImg, video, rulesImg }
-/gs/questions/{qid}           { order, text, a,b,c,d, list, pts, blocks, exImgFull, exAudio }
-/gs/answerKey/{qid}           "A"～"D" 或 "ALL"（都正確） ← 公布後才讀得到
+/gs/questions/{qid}           { order, text, a,b,c,d, list, pts, hidden, blocks, exImgFull, exAudio }
+/gs/answerKey/{qid}           "A"～"D" 或 "都正確"    ← 公布後才讀得到
 /gs/state                     { phase, list, qid, openedAt, limitSec, showNames, revealed:{qid:true},
                                 pendingDouble, wheel:{id,uid}, cue:{id,kind}, nav:{id,dir}, screenPage }
 /gs/players/{uid}             { name, at }

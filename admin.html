@@ -12,6 +12,9 @@
 <style>
   .qitem { border:2px solid rgba(53,168,255,.35); border-radius:12px; padding:14px; background:rgba(4,12,64,.6); }
   .qitem.editing { border-color: var(--gold); }
+  /* 隱藏的備用題：淡一點、虛線框，一眼就知道不會出 */
+  .qitem.is-hidden { opacity: .55; border-style: dashed; }
+  .qitem.is-hidden.editing { opacity: 1; }
   .qitem .head { display:flex; gap:10px; align-items:center; justify-content:space-between; min-width:0; }
   .qitem .no { flex:0 0 auto; font-weight:900; color:var(--gold); font-size:15px; }
   /* min-width:0 不能少：flex 項目預設不會縮到比內容還窄，
@@ -156,7 +159,7 @@
       </div>
       <div class="grid2">
         <div class="field"><label for="ed-key">正確答案</label>
-          <select id="ed-key"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="ALL">都正確（選哪個都算對）</option></select>
+          <select id="ed-key"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="都正確">都正確（選哪個都算對）</option></select>
         </div>
         <div class="field"><label for="ed-list">題庫</label>
           <select id="ed-list">
@@ -165,6 +168,10 @@
           </select>
         </div>
       </div>
+      <label class="row" style="align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="ed-hidden" style="width:auto;">
+        <span>🙈 隱藏這題（先備著，不出題）—— 控制台選不到、不佔題號、不計分</span>
+      </label>
       <div class="field">
         <label for="ed-pts">配分</label>
         <input id="ed-pts" type="number" min="1" max="99" step="1" value="1">

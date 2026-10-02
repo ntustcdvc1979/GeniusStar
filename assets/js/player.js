@@ -7,7 +7,7 @@ import {
   db, ref, onValue, set, serverTimestamp, ensureAnonAuth,
   PATH, PHASE, LETTERS, LISTS, DEFAULT_LIMIT_SEC,
   questionsOf, secondsLeft, ptsOf, elapsedMs, fmtSec, cleanName,
-  ALL_CORRECT, isCorrect, isKeyLetter, keyLabel,
+  isAllKey, isCorrect, isKeyLetter, keyLabel,
   $, show, toast, escapeHtml
 } from "./common.js";
 
@@ -299,8 +299,8 @@ function renderReveal(qid, q) {
   const repaint = () => {
     const k = key || stats?.key || null;
     $("#r-letter").textContent = k ? keyLabel(k) : "—";
-    $("#r-letter").classList.toggle("all", k === ALL_CORRECT);
-    $("#r-opt").textContent = k === ALL_CORRECT ? "這題選哪個都算對！"
+    $("#r-letter").classList.toggle("all", isAllKey(k));
+    $("#r-opt").textContent = isAllKey(k) ? "這題選哪個都算對！"
                             : k ? (q[k.toLowerCase()] || "").trim() : "";
 
     const pts = doubles[qid] === uid ? ptsOf(q) * 2 : ptsOf(q);

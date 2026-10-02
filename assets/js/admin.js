@@ -5,7 +5,7 @@
 import {
   db, auth, ref, onValue, set, update, remove,
   signInWithGoogle, consumeRedirectResult, authErrorText, signOut, onAuthStateChanged,
-  PATH, LETTERS, LISTS, LIST_LABEL, ALL_CORRECT, keyLabel,
+  PATH, LETTERS, LISTS, LIST_LABEL, ALL_CORRECT, isAllKey, keyLabel,
   listOf, questionsOf, parseBulkQuestions, ptsOf,
   blocksOf, groupBlocks, isSoloMedia, videoEmbed, isVideoUrl, webpSrc, normalizeBlock,
   BLOCK_TYPES, BLOCK_SIZES, DEFAULT_BLOCK_SIZE,
@@ -251,25 +251,34 @@ async function swapOrder(path, a, b) {
   await update(ref(db, path), { [`${a.id}/order`]: b.order ?? 0, [`${b.id}/order`]: a.order ?? 0 });
 }
 
+/** 後台列出全部題目（含隱藏的備用題） */
+const allOf = list => questionsOf(questions, list, { withHidden: true });
+
+/** 這題在現場的題號（隱藏的備用題不佔題號，回傳 0） */
+const liveNo = q => q.hidden ? 0 : questionsOf(questions, listOf(q)).findIndex(x => x.id === q.id) + 1;
+
 function paintQuestions() {
-  const list = questionsOf(questions, curList);
-  const other = questionsOf(questions, curList === LISTS.MAIN ? LISTS.DEMO : LISTS.MAIN).length;
-  $("#q-count").textContent = `${LIST_LABEL[curList]} ${list.length} 題（另一個題庫 ${other} 題）`;
+  const list = allOf(curList);
+  const nHidden = list.filter(q => q.hidden).length;
+  const other = allOf(curList === LISTS.MAIN ? LISTS.DEMO : LISTS.MAIN).length;
+  $("#q-count").textContent = `${LIST_LABEL[curList]} ${list.length - nHidden} 題`
+    + (nHidden ? `＋備用 ${nHidden} 題` : "") + `（另一個題庫 ${other} 題）`;
   $("#sel-list").value = curList;
 
-  $("#q-list").innerHTML = list.map((q, i) => {
+  $("#q-list").innerHTML = list.map(q => {
     const blks  = blocksOf(q);
     const hasEx = blks.length > 0 || !!(q.exImgFull || "").trim() || !!(q.exAudio || "").trim();
     const nImg  = blks.filter(b => b.t === "img").length;
     const nVid  = blks.filter(b => b.t === "video").length;
     return `
-    <div class="qitem ${editing === q.id ? "editing" : ""}" data-qid="${escapeHtml(q.id)}">
+    <div class="qitem ${editing === q.id ? "editing" : ""}${q.hidden ? " is-hidden" : ""}" data-qid="${escapeHtml(q.id)}">
       <div class="head">
-        <span class="no">第 ${i + 1} 題</span>
+        <span class="no">${q.hidden ? "備用" : `第 ${liveNo(q)} 題`}</span>
         <span class="txt">${escapeHtml(q.text || "（無題幹）")}</span>
         <span class="ans">${keys[q.id] ? "正解 " + keyLabel(keys[q.id]) : "⚠ 無正解"}</span>
       </div>
       <div class="meta">
+        ${q.hidden ? `<span class="flag warn">🙈 已隱藏・不會出題</span>` : ""}
         ${ptsOf(q) !== 1 ? `<span class="flag ok">配分 +${ptsOf(q)}</span>` : ""}
         <span class="flag ${hasEx ? "ok" : "warn"}">${hasEx ? "有說明" : "⚠ 沒有說明"}</span>
         ${blks.length ? `<span class="flag">${blks.length} 個區塊${nImg ? `・${nImg} 圖` : ""}${nVid ? `・${nVid} 影片` : ""}</span>` : ""}
@@ -281,6 +290,7 @@ function paintQuestions() {
         <button class="btn ghost mini q-edit">編輯</button>
         <button class="btn ghost mini q-up">↑</button>
         <button class="btn ghost mini q-down">↓</button>
+        <button class="btn ghost mini q-hide">${q.hidden ? "👁 取消隱藏" : "🙈 隱藏"}</button>
       </div>
     </div>`;
   }).join("") || `<p class="hint" style="text-align:left;">這個題庫還沒有題目。</p>`;
@@ -290,10 +300,15 @@ $("#q-list").addEventListener("click", async e => {
   const item = e.target.closest("[data-qid]");
   if (!item) return;
   const qid  = item.dataset.qid;
-  const list = questionsOf(questions, curList);
+  const list = allOf(curList);
   const i    = list.findIndex(q => q.id === qid);
 
-  if (e.target.classList.contains("q-edit"))       openEditor(qid);
+  if (e.target.classList.contains("q-hide")) {
+    const hide = !questions[qid]?.hidden;
+    await set(ref(db, `${PATH.questions}/${qid}/hidden`), hide || null);
+    toast(hide ? "已隱藏：這題先備著，控制台選不到" : "已取消隱藏：這題會照順序出");
+  }
+  else if (e.target.classList.contains("q-edit"))  openEditor(qid);
   else if (e.target.classList.contains("q-up")   && i > 0)               await swapOrder(PATH.questions, list[i], list[i - 1]);
   else if (e.target.classList.contains("q-down") && i < list.length - 1) await swapOrder(PATH.questions, list[i], list[i + 1]);
 });
@@ -303,10 +318,10 @@ $("#q-add").addEventListener("click", () => openEditor("new"));
 function openEditor(qid) {
   editing = qid;
   const q = qid === "new" ? {} : (questions[qid] || {});
-  const no = questionsOf(questions, curList).findIndex(x => x.id === qid) + 1;
   $("#ed-title").textContent = qid === "new"
     ? `新增題目（${LIST_LABEL[curList]}）`
-    : `編輯第 ${no} 題（${LIST_LABEL[listOf(q)]}）`;
+    : `編輯${q.hidden ? "備用題" : `第 ${liveNo({ id: qid, ...q })} 題`}（${LIST_LABEL[listOf(q)]}）`;
+  $("#ed-hidden").checked = !!q.hidden;
 
   $("#ed-pts").value    = ptsOf(q);
   $("#ed-list").value   = qid === "new" ? curList : listOf(q);
@@ -316,7 +331,9 @@ function openEditor(qid) {
   $("#ed-eximgfull").value = q.exImgFull || "";
   $("#ed-exaudio").value   = q.exAudio || "";
   for (const L of LETTERS) $("#ed-" + L.toLowerCase()).value = q[L.toLowerCase()] || "";
-  $("#ed-key").value = (qid === "new" ? "A" : keys[qid]) || "A";
+  // 舊題目存的是 "ALL"，下拉選單要對到「都正確」那一格
+  const k = qid === "new" ? "A" : keys[qid];
+  $("#ed-key").value = isAllKey(k) ? ALL_CORRECT : (k || "A");
 
   paintPreview();
   paintAudioPreview();
@@ -342,6 +359,7 @@ $("#ed-save").addEventListener("click", async () => {
 
   const data = { text };
   data.list = $("#ed-list").value === LISTS.DEMO ? LISTS.DEMO : LISTS.MAIN;
+  if ($("#ed-hidden").checked) data.hidden = true;
 
   const pts = Math.round(Number($("#ed-pts").value));
   if (!Number.isFinite(pts) || pts < 1 || pts > 99) { toast("配分要是 1～99 的整數"); return; }
@@ -370,7 +388,7 @@ $("#ed-save").addEventListener("click", async () => {
 
   const qid = editing === "new" ? newId("q") : editing;
   data.order = editing === "new"
-    ? questionsOf(questions, data.list).length
+    ? allOf(data.list).length
     : (questions[qid]?.order ?? 0);
 
   await set(ref(db, `${PATH.questions}/${qid}`), data);
@@ -402,7 +420,7 @@ $("#ed-del").addEventListener("click", async () => {
 /** 匯入到目前選的題庫。replace 只清掉「這個題庫」的題目，另一個題庫不動。 */
 async function writeBulk(items, replace) {
   if (replace) {
-    const doomed = questionsOf(questions, curList);
+    const doomed = allOf(curList);
     await Promise.all(doomed.flatMap(q => [
       remove(ref(db, `${PATH.questions}/${q.id}`)),
       remove(ref(db, `${PATH.answerKey}/${q.id}`)),
@@ -413,7 +431,7 @@ async function writeBulk(items, replace) {
       remove(ref(db, `${PATH.state}/revealed/${q.id}`))
     ]));
   }
-  const base = replace ? 0 : questionsOf(questions, curList).length;
+  const base = replace ? 0 : allOf(curList).length;
   const qs = {}, ks = {};
   items.forEach(({ q, key }, i) => {
     const id = newId("q");

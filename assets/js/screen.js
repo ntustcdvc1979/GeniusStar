@@ -9,7 +9,7 @@
 import {
   db, auth, ref, onValue, update, onAuthStateChanged,
   PATH, PHASE, LISTS, LETTERS, DEFAULT_LIMIT_SEC,
-  questionsOf, tally, ALL_CORRECT, isKeyLetter, keyLabel, correctCount, secondsLeft, isHost, ptsOf, fmtSec, fastestCorrect, openedAtOf,
+  questionsOf, tally, isAllKey, isKeyLetter, keyLabel, correctCount, secondsLeft, isHost, ptsOf, fmtSec, fastestCorrect, openedAtOf,
   blocksOf, groupBlocks, isSoloMedia, videoEmbed, isVideoUrl, isAudioUrl, webpSrc, TEXT_SIZE_VH, IMG_SIZE_VH,
   buildScoreboard, ranksOf,
   wheelPool, wheelSlots, $, show, escapeHtml, playerUrl, qrDataUrl
@@ -1008,8 +1008,8 @@ function paintReveal(qid, q) {
     <div class="reveal-top">
       <div class="reveal-ans">
         <div class="title-gold" style="font-size:2.8vh;"><span class="emoji">🎉</span> 正確答案 <span class="emoji">🎉</span></div>
-        <div class="reveal-letter${key === ALL_CORRECT ? " all" : ""}">${key ? escapeHtml(keyLabel(key)) : "—"}</div>
-        ${key === ALL_CORRECT ? `<div class="reveal-opt">這題選哪個都算對！</div>`
+        <div class="reveal-letter${isAllKey(key) ? " all" : ""}">${key ? escapeHtml(keyLabel(key)) : "—"}</div>
+        ${isAllKey(key) ? `<div class="reveal-opt">這題選哪個都算對！</div>`
           : optionText(q, key) ? `<div class="reveal-opt">${escapeHtml(optionText(q, key))}</div>` : ""}
       </div>
       <div class="reveal-ex">
@@ -1045,7 +1045,7 @@ function paintReveal(qid, q) {
 }
 
 function optionText(q, key) {
-  if (!q || !key || key === ALL_CORRECT) return "";
+  if (!q || !key || isAllKey(key)) return "";
   return (q[String(key).toLowerCase()] || "").trim();
 }
 

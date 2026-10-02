@@ -25,31 +25,36 @@ export const DEFAULT_LIMIT_SEC = 20;
 export const NAME_MAX = 12;
 
 /**
- * 正解：A～D，或 ALL「都正確」—— 那一題只要有送出答案，選哪個都算對。
+ * 正解：A～D，或「都正確」—— 那一題只要有送出答案，選哪個都算對。
  * （沒送出的人還是 0 分，「都正確」不會讓沒作答的人白拿分）
+ * 資料庫裡就直接存「都正確」三個字；早期存成 "ALL" 的舊題目也照樣認得。
  */
-export const ALL_CORRECT = "ALL";
-export const KEYS = [...LETTERS, ALL_CORRECT];
+export const ALL_CORRECT = "都正確";
+const LEGACY_ALL = "ALL";
+export const KEYS = [...LETTERS, ALL_CORRECT, LEGACY_ALL];
 
 /** 這是一個合法的正解嗎 */
 export const isKey = key => KEYS.includes(key);
 
+/** 正解是不是「都正確」（含舊的 "ALL"） */
+export const isAllKey = key => key === ALL_CORRECT || key === LEGACY_ALL;
+
 /** 選 choice 算不算答對 */
 export function isCorrect(choice, key) {
   if (!LETTERS.includes(choice)) return false;
-  return key === ALL_CORRECT ? true : choice === key;
+  return isAllKey(key) ? true : choice === key;
 }
 
 /** 某個選項字母是不是正解（畫長條圖、標綠色用） */
-export const isKeyLetter = (letter, key) => key === ALL_CORRECT || letter === key;
+export const isKeyLetter = (letter, key) => isAllKey(key) || letter === key;
 
-/** 正解要怎麼顯示：A～D 原樣，ALL 顯示「都正確」 */
-export const keyLabel = key => key === ALL_CORRECT ? "都正確" : (key || "");
+/** 正解要怎麼顯示：A～D 原樣，「都正確」（含舊的 ALL）一律顯示「都正確」 */
+export const keyLabel = key => isAllKey(key) ? ALL_CORRECT : (key || "");
 
 /** 這個答案有幾個人答對（作答分布 → 人數） */
 export function correctCount(t, key) {
   if (!isKey(key)) return 0;
-  return key === ALL_CORRECT ? (t?.total || 0) : (t?.[key] || 0);
+  return isAllKey(key) ? (t?.total || 0) : (t?.[key] || 0);
 }
 
 // ---------- 說明頁排版區塊 ----------
@@ -81,7 +86,7 @@ export const BLOCK_ALIGNS = [
 export const DEFAULT_BLOCK_SIZE = 3;
 
 /** 文字級距（vh）—— 投影頁還會再依實際高度縮放 */
-export const TEXT_SIZE_VH = { 1: 1.8, 2: 2.2, 3: 2.8, 4: 3.4, 5: 5.4 };
+export const TEXT_SIZE_VH = { 1: 2.4, 2: 3, 3: 3.8, 4: 4.6, 5: 6.2 };
 /** 圖片高度上限（vh） */
 export const IMG_SIZE_VH  = { 1: 9,   2: 14,  3: 19,  4: 25,  5: 32  };
 
@@ -249,9 +254,13 @@ export function parseBulkQuestions(raw) {
 /** 題目屬於哪個題庫（沒寫就當正式題） */
 export const listOf = q => (q?.list === LISTS.DEMO ? LISTS.DEMO : LISTS.MAIN);
 
-/** 取出某個題庫的題目，依 order 排序 */
-export function questionsOf(questions, list) {
-  return toSortedList(questions).filter(q => listOf(q) === list);
+/**
+ * 取出某個題庫的題目，依 order 排序。
+ * 後台標成「隱藏」的備用題預設不算在內 —— 控制台選不到、題號不佔位、也不計分。
+ * 只有後台要列出全部題目時才傳 { withHidden: true }。
+ */
+export function questionsOf(questions, list, { withHidden = false } = {}) {
+  return toSortedList(questions).filter(q => listOf(q) === list && (withHidden || !q.hidden));
 }
 
 // ============================================================

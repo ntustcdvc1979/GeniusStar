@@ -8,7 +8,7 @@ import {
   buildScoreboard, ranksOf, fastestCorrect, isCorrect, isKey, keyLabel, correctCount, ALL_CORRECT,
   tally, elapsedMs, fmtSec, cleanName, parseBulkQuestions, questionsOf, ptsOf,
   wheelPool, wheelSlots, randomIndex, secondsLeft, blocksOf, groupBlocks, videoEmbed, webpSrc,
-  LISTS, WHEEL_MAX_SLOTS
+  LISTS, WHEEL_MAX_SLOTS, isAllKey, TEXT_SIZE_VH
 } from "./logic.js";
 
 export function run() {
@@ -106,8 +106,10 @@ export function run() {
   ok("都正確：選什麼都算對", ["A", "B", "C", "D"].every(L => isCorrect(L, ALL_CORRECT)));
   ok("都正確：沒作答還是不算對", !isCorrect(undefined, ALL_CORRECT) && !isCorrect("Z", ALL_CORRECT));
   ok("一般正解：只有那個字母對", isCorrect("B", "B") && !isCorrect("A", "B"));
-  ok("isKey", isKey("ALL") && isKey("D") && !isKey("E") && !isKey(""));
-  ok("keyLabel", keyLabel("ALL") === "都正確" && keyLabel("C") === "C");
+  ok("「都正確」直接存成中文", ALL_CORRECT === "都正確");
+  ok("isKey", isKey("都正確") && isKey("D") && !isKey("E") && !isKey(""));
+  ok("舊資料的 ALL 也當成都正確", isKey("ALL") && isAllKey("ALL") && isCorrect("C", "ALL") && keyLabel("ALL") === "都正確");
+  ok("keyLabel", keyLabel("都正確") === "都正確" && keyLabel("C") === "C");
   ok("correctCount", correctCount({ A: 2, B: 3, C: 0, D: 1, total: 6 }, "ALL") === 6 &&
     correctCount({ A: 2, B: 3, total: 5 }, "B") === 3 && correctCount({ total: 5 }, null) === 0);
 
@@ -155,6 +157,14 @@ export function run() {
   try { parseBulkQuestions("題目|甲|乙|C"); } catch { threw = true; }
   ok("批次匯入：正解選項沒填會擋下", threw);
   ok("題庫篩選", questionsOf(questions, LISTS.MAIN).length === 4 && questionsOf(questions, LISTS.DEMO).length === 1);
+
+  // 隱藏的備用題：現場看不到、不佔題號、不計分；後台看得到
+  const withHidden = { ...questions, q2: { ...questions.q2, hidden: true } };
+  ok("隱藏題：現場題號跳過它", questionsOf(withHidden, LISTS.MAIN).map(q => q.id).join() === "q1,q3,q4");
+  ok("隱藏題：後台列得出來", questionsOf(withHidden, LISTS.MAIN, { withHidden: true }).length === 4);
+  const bh = buildScoreboard(players, withHidden, keys, answers, revealed, LISTS.MAIN, null, openedAt);
+  ok("隱藏題：不計分", bh.questionCount === 2 && bh.rows.find(r => r.uid === "u1").points === 1);
+  ok("說明文字放大了", TEXT_SIZE_VH[3] >= 3.6 && TEXT_SIZE_VH[1] < TEXT_SIZE_VH[5]);
 
   // ════════ 7. 說明排版 ════════
   ok("舊格式 exText/exImg 自動轉區塊", blocksOf({ exText: "x", exImg: "a.png" }).map(b => b.t + b.w).join() === "texthalf,imghalf");
