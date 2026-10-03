@@ -6,7 +6,7 @@ import {
   db, auth, ref, onValue, set, update, remove,
   signInWithGoogle, consumeRedirectResult, authErrorText, signOut, onAuthStateChanged,
   PATH, LETTERS, LISTS, LIST_LABEL, ALL_CORRECT, isAllKey, keyLabel,
-  listOf, questionsOf, parseBulkQuestions, exportBulkQuestions, ptsOf,
+  listOf, questionsOf, parseBulkQuestions, exportQuestionsText, ptsOf,
   blocksOf, groupBlocks, isSoloMedia, videoEmbed, isVideoUrl, webpSrc, normalizeBlock,
   BLOCK_TYPES, BLOCK_SIZES, DEFAULT_BLOCK_SIZE,
   BLOCK_WIDTHS, BLOCK_ALIGNS,
@@ -460,7 +460,7 @@ async function runBulk(replace) {
 }
 
 // ============================================================
-//  匯出：目前題庫 → 批次貼上的格式，貼回去就能原樣匯入
+//  匯出：目前題庫 → 第x題／題目／參考答案／說明 的文字
 // ============================================================
 $("#ex-run").addEventListener("click", () => {
   const all = allOf(curList);
@@ -475,16 +475,17 @@ $("#ex-run").addEventListener("click", () => {
     return;
   }
 
-  out.value = exportBulkQuestions(list.map(q => ({ q, key: keys[q.id] })));
+  // 依匯出的順序編號；隱藏的備用題會註明「（備用）」
+  out.value = exportQuestionsText(list.map((q, i) => ({ q, key: keys[q.id], no: i + 1 })));
   show(out, true);
   $("#ex-copy").disabled = false;
 
-  // 沒設正解的題目匯出時最後一欄是空的，貼回去會被擋下 —— 先講清楚
+  // 沒設正解的題目「參考答案」會是空的 —— 先講清楚
   const noKey = list.filter(q => !keys[q.id]).length;
   const nHidden = list.filter(q => q.hidden).length;
   $("#ex-note").textContent = `${LIST_LABEL[curList]}：匯出 ${list.length} 題`
-    + (nHidden ? `（含隱藏的備用題 ${nHidden} 題，貼回去之後會變成一般題目）` : "")
-    + (noKey ? `　⚠ 其中 ${noKey} 題還沒設正解，貼回去前要補上` : "");
+    + (nHidden ? `（含隱藏的備用題 ${nHidden} 題）` : "")
+    + (noKey ? `　⚠ 其中 ${noKey} 題還沒設正解，參考答案是空的` : "");
   show($("#ex-note"), true);
   out.focus();
   out.select();

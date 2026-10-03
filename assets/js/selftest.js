@@ -6,7 +6,7 @@
 
 import {
   buildScoreboard, ranksOf, fastestCorrect, isCorrect, isKey, keyLabel, correctCount, ALL_CORRECT,
-  tally, elapsedMs, fmtSec, cleanName, parseBulkQuestions, exportBulkQuestions, questionsOf, ptsOf,
+  tally, elapsedMs, fmtSec, cleanName, parseBulkQuestions, exportQuestionsText, questionsOf, ptsOf,
   wheelPool, wheelSlots, randomIndex, secondsLeft, blocksOf, groupBlocks, videoEmbed, webpSrc,
   LISTS, WHEEL_MAX_SLOTS, isAllKey, TEXT_SIZE_VH
 } from "./logic.js";
@@ -156,26 +156,22 @@ export function run() {
   let threw = false;
   try { parseBulkQuestions("題目|甲|乙|C"); } catch { threw = true; }
   ok("批次匯入：正解選項沒填會擋下", threw);
-  // 匯出 → 貼回去要原樣匯入
-  const src = [
-    { q: { text: "台灣最高的建築？", a: "101", b: "85", c: "歌劇院", d: "赤崁樓" }, key: "A" },
-    { q: { text: "只有兩個選項？", a: "甲", b: "乙" }, key: "B" },
-    { q: { text: "你喜歡哪個？", a: "貓", b: "狗", c: "兔" }, key: "都正確" },
-    { q: { text: "舊資料", a: "x", b: "y" }, key: "ALL" },
-    { q: { text: "沒有 C 只有 D", a: "x", b: "y", d: "z" }, key: "D" },
-    { q: { text: "題幹有|直線\n還有換行", a: "a|b", b: "c" }, key: "A" }
+  // 匯出成給人看的文字：第x題／題目／參考答案／說明
+  const exSrc = [
+    { no: 1, key: "A", q: { text: "台灣最高的建築物是？", a: "台北101", b: "高雄85大樓",
+        blocks: [{ t: "head", v: "台北 101" }, { t: "img", v: "a.webp" }, { t: "text", v: "高 508 公尺。\r\n2004 年落成。" }] } },
+    { no: 2, key: "都正確", q: { text: "你最喜歡哪一種動物？", a: "貓", b: "狗" } },
+    { no: 3, key: "ALL", q: { text: "舊資料", a: "x", b: "y", exText: "舊格式的說明" } },
+    { no: 4, key: undefined, q: { text: "還沒設正解", a: "x", b: "y", hidden: true } }
   ];
-  const txt = exportBulkQuestions(src);
-  const back = parseBulkQuestions(txt);
-  const lines = txt.split("\n");
-  ok("匯出：一行一題", lines.length === 6, JSON.stringify(lines[0]));
-  ok("匯出再匯入：題目與選項一樣", back.length === 6 &&
-    back.slice(0, 5).every((b, i) => ["text", "a", "b", "c", "d"].every(f => (b.q[f] || "") === (src[i].q[f] || ""))));
-  ok("匯出再匯入：正解一樣（舊的 ALL 變成都正確）",
-    back.map(b => b.key).join() === "A,B,都正確,都正確,D,A");
-  ok("匯出：只有兩個選項不多寫空欄", lines[1] === "只有兩個選項？ | 甲 | 乙 | B");
-  ok("匯出：中間空著的選項留空欄，D 不會跑到 C", back[4].q.c === undefined && back[4].q.d === "z");
-  ok("匯出：直線換成全形、換行換成空白", back[5].q.text === "題幹有｜直線 還有換行" && back[5].q.a === "a｜b");
+  const exLines = exportQuestionsText(exSrc).split("\n");
+  ok("匯出：第一題的四行格式", exLines.slice(0, 5).join("|") ===
+    "第1題|題目:台灣最高的建築物是？|參考答案:A 台北101|說明:台北 101|高 508 公尺。", JSON.stringify(exLines.slice(0, 6)));
+  ok("匯出：說明只取文字與小標題，圖片略過，多段換行", exLines[5] === "2004 年落成。" && !exLines.join().includes("a.webp"));
+  ok("匯出：都正確（含舊的 ALL）", exLines[8] === "參考答案:都正確" && exLines[12] === "參考答案:都正確");
+  ok("匯出：沒有說明就留空", exLines[9] === "說明:");
+  ok("匯出：舊格式的 exText 也匯得出來", exLines[13] === "說明:舊格式的說明");
+  ok("匯出：備用題註明、沒正解留空", exLines[14] === "第4題（備用）" && exLines[16] === "參考答案:" && exLines.length === 18);
 
   ok("題庫篩選", questionsOf(questions, LISTS.MAIN).length === 4 && questionsOf(questions, LISTS.DEMO).length === 1);
 

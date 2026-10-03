@@ -250,19 +250,33 @@ export function parseBulkQuestions(raw) {
 }
 
 /**
- * 把題目匯出成批次貼上的格式（一行一題），貼回「批次貼上」就能原樣匯入。
- *   題幹 | A選項 | B選項 | C選項 | D選項 | 正解
- * 欄位裡的換行會換成空白、半形 | 會換成全形｜，不然貼回去會被切成別的欄位。
- * 只寫到最後一個有填的選項；中間空著的選項留空欄，位置才不會跑掉。
- * 說明排版、配分、隱藏這些格式裝不下，只匯出題目、選項與正解。
- * @param items [{ q, key }]
+ * 把題目匯出成方便閱讀的文字，一題四行：
+ *   第1題
+ *   題目:台灣最高的建築物是？
+ *   參考答案:A 台北101
+ *   說明:高 508 公尺……
+ * 參考答案在字母後面補上那個選項的文字，只看這份文字也知道答案是什麼；
+ * 「都正確」就直接寫「都正確」，沒設正解就留空。
+ * 說明取後台排版區塊裡的小標題與文字（圖片、影片匯不出來），多段之間換行。
+ * @param items [{ q, key, no }] —— no 是題號；q.hidden 的備用題會寫成「第3題（備用）」
  */
-export function exportBulkQuestions(items) {
-  const clean = v => String(v ?? "").replace(/\s*\r?\n\s*/g, " ").replace(/\|/g, "｜").trim();
-  return items.map(({ q, key }) => {
-    const opts = LETTERS.map(L => clean(q?.[L.toLowerCase()]));
-    while (opts.length > 2 && !opts[opts.length - 1]) opts.pop();
-    return [clean(q?.text), ...opts, isKey(key) ? keyLabel(key) : ""].join(" | ");
+export function exportQuestionsText(items) {
+  const line = v => String(v ?? "").replace(/\r\n?/g, "\n").trim();
+  return items.map(({ q, key, no }) => {
+    const answer = !isKey(key) ? ""
+      : isAllKey(key) ? ALL_CORRECT
+      : [key, line(q?.[key.toLowerCase()])].filter(Boolean).join(" ");
+    const explain = blocksOf(q)
+      .filter(b => b.t === "head" || b.t === "text")
+      .map(b => line(b.v))
+      .filter(Boolean)
+      .join("\n");
+    return [
+      `第${no}題${q?.hidden ? "（備用）" : ""}`,
+      `題目:${line(q?.text)}`,
+      `參考答案:${answer}`,
+      `說明:${explain}`
+    ].join("\n");
   }).join("\n");
 }
 
