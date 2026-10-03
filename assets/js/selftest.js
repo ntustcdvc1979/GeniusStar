@@ -156,22 +156,23 @@ export function run() {
   let threw = false;
   try { parseBulkQuestions("題目|甲|乙|C"); } catch { threw = true; }
   ok("批次匯入：正解選項沒填會擋下", threw);
-  // 匯出成給人看的文字：第x題／題目／參考答案／說明
+  // 匯出成給人看的文字：第x題／題目／選項／參考答案／說明
   const exSrc = [
-    { no: 1, key: "A", q: { text: "台灣最高的建築物是？", a: "台北101", b: "高雄85大樓",
+    { no: 1, key: "A", q: { text: "台灣最高的建築物是？", a: "台北101", b: "高雄85大樓", c: "台中國家歌劇院", d: "台南赤崁樓",
         blocks: [{ t: "head", v: "台北 101" }, { t: "img", v: "a.webp" }, { t: "text", v: "高 508 公尺。\r\n2004 年落成。" }] } },
     { no: 2, key: "都正確", q: { text: "你最喜歡哪一種動物？", a: "貓", b: "狗" } },
     { no: 3, key: "ALL", q: { text: "舊資料", a: "x", b: "y", exText: "舊格式的說明" } },
-    { no: 4, key: undefined, q: { text: "還沒設正解", a: "x", b: "y", hidden: true } }
+    { no: 4, key: undefined, q: { text: "還沒設正解", a: "x", b: "y", d: "z", hidden: true } }
   ];
   const exLines = exportQuestionsText(exSrc).split("\n");
-  ok("匯出：第一題的四行格式", exLines.slice(0, 5).join("|") ===
-    "第1題|題目:台灣最高的建築物是？|參考答案:A 台北101|說明:台北 101|高 508 公尺。", JSON.stringify(exLines.slice(0, 6)));
-  ok("匯出：說明只取文字與小標題，圖片略過，多段換行", exLines[5] === "2004 年落成。" && !exLines.join().includes("a.webp"));
-  ok("匯出：都正確（含舊的 ALL）", exLines[8] === "參考答案:都正確" && exLines[12] === "參考答案:都正確");
-  ok("匯出：沒有說明就留空", exLines[9] === "說明:");
-  ok("匯出：舊格式的 exText 也匯得出來", exLines[13] === "說明:舊格式的說明");
-  ok("匯出：備用題註明、沒正解留空", exLines[14] === "第4題（備用）" && exLines[16] === "參考答案:" && exLines.length === 18);
+  ok("匯出：第一題的格式（含四個選項）", exLines.slice(0, 10).join("|") ===
+    "第1題|題目:台灣最高的建築物是？|A:台北101|B:高雄85大樓|C:台中國家歌劇院|D:台南赤崁樓|參考答案:A 台北101|說明:台北 101|高 508 公尺。|2004 年落成。",
+    JSON.stringify(exLines.slice(0, 10)));
+  ok("匯出：說明只取文字與小標題，圖片略過", !exLines.join().includes("a.webp"));
+  ok("匯出：兩個選項就只列 A、B", exLines.slice(10, 16).join("|") === "第2題|題目:你最喜歡哪一種動物？|A:貓|B:狗|參考答案:都正確|說明:");
+  ok("匯出：舊的 ALL 也寫成都正確、舊格式 exText 匯得出來", exLines[20] === "參考答案:都正確" && exLines[21] === "說明:舊格式的說明");
+  ok("匯出：沒填的 C 跳過、D 照列；備用題註明、沒正解留空",
+    exLines.slice(22).join("|") === "第4題（備用）|題目:還沒設正解|A:x|B:y|D:z|參考答案:|說明:", JSON.stringify(exLines.slice(22)));
 
   ok("題庫篩選", questionsOf(questions, LISTS.MAIN).length === 4 && questionsOf(questions, LISTS.DEMO).length === 1);
 

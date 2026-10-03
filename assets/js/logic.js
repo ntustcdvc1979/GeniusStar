@@ -250,12 +250,15 @@ export function parseBulkQuestions(raw) {
 }
 
 /**
- * 把題目匯出成方便閱讀的文字，一題四行：
+ * 把題目匯出成方便閱讀的文字：
  *   第1題
  *   題目:台灣最高的建築物是？
+ *   A:台北101
+ *   B:高雄85大樓
  *   參考答案:A 台北101
  *   說明:高 508 公尺……
- * 參考答案在字母後面補上那個選項的文字，只看這份文字也知道答案是什麼；
+ * 選項只列有填的（兩個選項的題目就只有 A、B 兩行）。
+ * 參考答案在字母後面補上那個選項的文字，一眼就知道答案是什麼；
  * 「都正確」就直接寫「都正確」，沒設正解就留空。
  * 說明取後台排版區塊裡的小標題與文字（圖片、影片匯不出來），多段之間換行。
  * @param items [{ q, key, no }] —— no 是題號；q.hidden 的備用題會寫成「第3題（備用）」
@@ -274,6 +277,7 @@ export function exportQuestionsText(items) {
     return [
       `第${no}題${q?.hidden ? "（備用）" : ""}`,
       `題目:${line(q?.text)}`,
+      ...LETTERS.filter(L => line(q?.[L.toLowerCase()])).map(L => `${L}:${line(q[L.toLowerCase()])}`),
       `參考答案:${answer}`,
       `說明:${explain}`
     ].join("\n");
