@@ -6,7 +6,7 @@
 
 import {
   buildScoreboard, ranksOf, fastestCorrect, isCorrect, isKey, keyLabel, correctCount, ALL_CORRECT,
-  tally, elapsedMs, fmtSec, cleanName, parseBulkQuestions, questionsOf, ptsOf,
+  tally, elapsedMs, fmtSec, cleanName, parseBulkQuestions, exportBulkQuestions, questionsOf, ptsOf,
   wheelPool, wheelSlots, randomIndex, secondsLeft, blocksOf, groupBlocks, videoEmbed, webpSrc,
   LISTS, WHEEL_MAX_SLOTS, isAllKey, TEXT_SIZE_VH
 } from "./logic.js";
@@ -156,6 +156,27 @@ export function run() {
   let threw = false;
   try { parseBulkQuestions("題目|甲|乙|C"); } catch { threw = true; }
   ok("批次匯入：正解選項沒填會擋下", threw);
+  // 匯出 → 貼回去要原樣匯入
+  const src = [
+    { q: { text: "台灣最高的建築？", a: "101", b: "85", c: "歌劇院", d: "赤崁樓" }, key: "A" },
+    { q: { text: "只有兩個選項？", a: "甲", b: "乙" }, key: "B" },
+    { q: { text: "你喜歡哪個？", a: "貓", b: "狗", c: "兔" }, key: "都正確" },
+    { q: { text: "舊資料", a: "x", b: "y" }, key: "ALL" },
+    { q: { text: "沒有 C 只有 D", a: "x", b: "y", d: "z" }, key: "D" },
+    { q: { text: "題幹有|直線\n還有換行", a: "a|b", b: "c" }, key: "A" }
+  ];
+  const txt = exportBulkQuestions(src);
+  const back = parseBulkQuestions(txt);
+  const lines = txt.split("\n");
+  ok("匯出：一行一題", lines.length === 6, JSON.stringify(lines[0]));
+  ok("匯出再匯入：題目與選項一樣", back.length === 6 &&
+    back.slice(0, 5).every((b, i) => ["text", "a", "b", "c", "d"].every(f => (b.q[f] || "") === (src[i].q[f] || ""))));
+  ok("匯出再匯入：正解一樣（舊的 ALL 變成都正確）",
+    back.map(b => b.key).join() === "A,B,都正確,都正確,D,A");
+  ok("匯出：只有兩個選項不多寫空欄", lines[1] === "只有兩個選項？ | 甲 | 乙 | B");
+  ok("匯出：中間空著的選項留空欄，D 不會跑到 C", back[4].q.c === undefined && back[4].q.d === "z");
+  ok("匯出：直線換成全形、換行換成空白", back[5].q.text === "題幹有｜直線 還有換行" && back[5].q.a === "a｜b");
+
   ok("題庫篩選", questionsOf(questions, LISTS.MAIN).length === 4 && questionsOf(questions, LISTS.DEMO).length === 1);
 
   // 隱藏的備用題：現場看不到、不佔題號、不計分；後台看得到

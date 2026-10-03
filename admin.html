@@ -260,6 +260,26 @@
       </div>
     </div>
 
+    <!-- 匯出 -->
+    <div class="card stack">
+      <strong class="title-gold" style="font-size:20px;">匯出目前題庫</strong>
+      <p class="hint" style="text-align:left; margin:0;">
+        把上面「正在編輯哪個題庫」選的那一個匯出成一串文字，格式跟批次貼上一樣 ——
+        可以存起來備份、傳給別人改，改完貼回「批次貼上」就能匯入。<br>
+        只有題目、選項與正解；<b>說明排版、配分、隱藏</b>這些格式裝不下，不會匯出。
+      </p>
+      <label class="row" style="align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="ex-hidden" style="width:auto;" checked>
+        <span>包含隱藏的備用題</span>
+      </label>
+      <div class="row">
+        <button id="ex-run"  class="btn ghost">📤 匯出成文字</button>
+        <button id="ex-copy" class="btn ghost" disabled>📋 複製</button>
+      </div>
+      <textarea id="ex-out" class="hidden" readonly style="min-height:160px;"></textarea>
+      <p class="hint hidden" id="ex-note" style="text-align:left; margin:0;"></p>
+    </div>
+
     <div class="row">
       <a class="btn ghost" href="host.html">← 回主持人控制台</a>
       <button id="btn-logout" class="btn ghost">登出</button>

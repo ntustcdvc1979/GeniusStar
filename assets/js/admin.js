@@ -6,7 +6,7 @@ import {
   db, auth, ref, onValue, set, update, remove,
   signInWithGoogle, consumeRedirectResult, authErrorText, signOut, onAuthStateChanged,
   PATH, LETTERS, LISTS, LIST_LABEL, ALL_CORRECT, isAllKey, keyLabel,
-  listOf, questionsOf, parseBulkQuestions, ptsOf,
+  listOf, questionsOf, parseBulkQuestions, exportBulkQuestions, ptsOf,
   blocksOf, groupBlocks, isSoloMedia, videoEmbed, isVideoUrl, webpSrc, normalizeBlock,
   BLOCK_TYPES, BLOCK_SIZES, DEFAULT_BLOCK_SIZE,
   BLOCK_WIDTHS, BLOCK_ALIGNS,
@@ -458,3 +458,47 @@ async function runBulk(replace) {
     alert("匯入失敗：\n" + e.message);
   }
 }
+
+// ============================================================
+//  匯出：目前題庫 → 批次貼上的格式，貼回去就能原樣匯入
+// ============================================================
+$("#ex-run").addEventListener("click", () => {
+  const all = allOf(curList);
+  const list = $("#ex-hidden").checked ? all : all.filter(q => !q.hidden);
+  const out = $("#ex-out");
+
+  if (!list.length) {
+    out.value = "";
+    show(out, false);
+    $("#ex-copy").disabled = true;
+    toast("這個題庫沒有可以匯出的題目");
+    return;
+  }
+
+  out.value = exportBulkQuestions(list.map(q => ({ q, key: keys[q.id] })));
+  show(out, true);
+  $("#ex-copy").disabled = false;
+
+  // 沒設正解的題目匯出時最後一欄是空的，貼回去會被擋下 —— 先講清楚
+  const noKey = list.filter(q => !keys[q.id]).length;
+  const nHidden = list.filter(q => q.hidden).length;
+  $("#ex-note").textContent = `${LIST_LABEL[curList]}：匯出 ${list.length} 題`
+    + (nHidden ? `（含隱藏的備用題 ${nHidden} 題，貼回去之後會變成一般題目）` : "")
+    + (noKey ? `　⚠ 其中 ${noKey} 題還沒設正解，貼回去前要補上` : "");
+  show($("#ex-note"), true);
+  out.focus();
+  out.select();
+});
+
+$("#ex-copy").addEventListener("click", async () => {
+  const out = $("#ex-out");
+  try {
+    await navigator.clipboard.writeText(out.value);
+  } catch {
+    // 不是 https 或瀏覽器不給剪貼簿權限時，退回舊方法
+    out.focus();
+    out.select();
+    document.execCommand("copy");
+  }
+  toast("已複製到剪貼簿");
+});

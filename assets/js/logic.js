@@ -249,6 +249,23 @@ export function parseBulkQuestions(raw) {
   return out;
 }
 
+/**
+ * 把題目匯出成批次貼上的格式（一行一題），貼回「批次貼上」就能原樣匯入。
+ *   題幹 | A選項 | B選項 | C選項 | D選項 | 正解
+ * 欄位裡的換行會換成空白、半形 | 會換成全形｜，不然貼回去會被切成別的欄位。
+ * 只寫到最後一個有填的選項；中間空著的選項留空欄，位置才不會跑掉。
+ * 說明排版、配分、隱藏這些格式裝不下，只匯出題目、選項與正解。
+ * @param items [{ q, key }]
+ */
+export function exportBulkQuestions(items) {
+  const clean = v => String(v ?? "").replace(/\s*\r?\n\s*/g, " ").replace(/\|/g, "｜").trim();
+  return items.map(({ q, key }) => {
+    const opts = LETTERS.map(L => clean(q?.[L.toLowerCase()]));
+    while (opts.length > 2 && !opts[opts.length - 1]) opts.pop();
+    return [clean(q?.text), ...opts, isKey(key) ? keyLabel(key) : ""].join(" | ");
+  }).join("\n");
+}
+
 // ---------- 題庫 ----------
 
 /** 題目屬於哪個題庫（沒寫就當正式題） */
